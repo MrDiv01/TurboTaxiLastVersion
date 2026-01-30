@@ -8,21 +8,22 @@ namespace TurboTaxi.Domain.Entities
 {
     public class Driver : BaseEntity
     {
-        public int UserId { get; set; }             // FK → User
-        public bool IsVerified { get; set; } = false; // sənəd təsdiqi və s.
+        public int UserId { get; set; }
+        public bool IsVerified { get; set; } = false;
+        public bool IsAvailable { get; set; } = false;
 
-        // Aktual maşın
         public int? VehicleId { get; set; }
 
-        // Real-time tərəfi Redis-də olacaq, amma DB üçün son known location (optional)
+        public double? CurrentLatitude { get; set; }
+        public double? CurrentLongitude { get; set; }
+        public DateTime? UpdatedAt { get; set; }
 
 
-        // Navigation
         public User User { get; set; } = null!;
         public Vehicle? Vehicle { get; set; }
         public ICollection<Ride> Rides { get; set; } = new List<Ride>();
         public ICollection<DriverStatusHistory> StatusHistory { get; set; } = new List<DriverStatusHistory>();
-        public ICollection<Rating> RatingsReceived { get; set; } = new List<Rating>(); // user-rated
+        public ICollection<Rating> RatingsReceived { get; set; } = new List<Rating>();
     }
 
 }

@@ -8,9 +8,10 @@ namespace TurboTaxi.Domain.Enums
     {
         Pending = 0,   // request atılıb, sürücü hələ accept etməyib
         Approved = 1,  // sürücü accept edib
-        OnWay = 2,     // sürücü gedir / userlə birlikdə gedirlər
-        Canceled = 3,
-        Completed = 4
+        Arrived = 2,   // sürücü pickup nöqtəsinə çatıb
+        OnWay = 3,     // ride başladı, user maşındadır
+        Canceled = 4,
+        Completed = 5
     }
 
 }

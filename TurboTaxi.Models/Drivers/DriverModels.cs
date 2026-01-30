@@ -1,3 +1,5 @@
+using TurboTaxi.Models.Vehicles;
+
 namespace TurboTaxi.Models.Drivers
 {
     public class DriverCreateRequest
@@ -20,6 +22,21 @@ namespace TurboTaxi.Models.Drivers
         public int UserId { get; set; }
         public bool IsVerified { get; set; }
         public int? VehicleId { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+
+    public class DriverDetailDto
+    {
+        public int Id { get; set; }
+        public int UserId { get; set; }
+        public string FullName { get; set; } = null!;
+        public string PhoneNumber { get; set; } = null!;
+        public string Email { get; set; } = null!;
+        public bool IsActive { get; set; }
+        public bool IsVerified { get; set; }
+        public int? VehicleId { get; set; }
+        public VehicleDto? Vehicle { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
     }

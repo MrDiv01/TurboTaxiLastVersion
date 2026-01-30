@@ -7,10 +7,14 @@ namespace TurboTaxi.Realtime.Services
     public class RideNotificationService : IRideNotificationService
     {
         private readonly IHubContext<DriverHub, IDriverClient> _driverHub;
+        private readonly IHubContext<UserHub, IUserClient> _userHub;
 
-        public RideNotificationService(IHubContext<DriverHub, IDriverClient> driverHub)
+        public RideNotificationService(
+            IHubContext<DriverHub, IDriverClient> driverHub,
+            IHubContext<UserHub, IUserClient> userHub)
         {
             _driverHub = driverHub;
+            _userHub = userHub;
         }
 
         private static int ExtractRideId(object payload)
@@ -39,7 +43,8 @@ namespace TurboTaxi.Realtime.Services
         public Task NotifyUserAsync(int userId, object payload)
         {
             var rideId = ExtractRideId(payload);
-            return _driverHub.Clients.Group($"user:{userId}").RideStatusUpdated(rideId, "ride_update", payload);
+            var statusValue = payload?.GetType().GetProperty("Status")?.GetValue(payload)?.ToString() ?? "Unknown";
+            return _userHub.Clients.Group($"user:{userId}").RideStatusUpdated(rideId, statusValue, payload);
         }
 
         public async Task NotifyNearestDriversAsync(List<int> driverIds, object payload)

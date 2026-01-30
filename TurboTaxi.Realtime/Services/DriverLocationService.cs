@@ -13,17 +13,20 @@ namespace TurboTaxi.Realtime.Services
     {
         private readonly IRedisService _redis;
         private readonly IHubContext<DriverHub, IDriverClient> _driverHub;
+        private readonly IHubContext<UserHub, IUserClient> _userHub;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<DriverLocationService> _logger;
 
         public DriverLocationService(
             IRedisService redis,
             IHubContext<DriverHub, IDriverClient> driverHub,
+            IHubContext<UserHub, IUserClient> userHub,
             IServiceProvider serviceProvider,
             ILogger<DriverLocationService> logger)
         {
             _redis = redis;
             _driverHub = driverHub;
+            _userHub = userHub;
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
@@ -119,9 +122,20 @@ namespace TurboTaxi.Realtime.Services
                 {
                     _logger.LogDebug($"?? Broadcasting driver #{driverId} location to user #{userId}");
                     
-                    // Broadcast to user group
-                    await _driverHub.Clients.Group($"user:{userId}")
-                        .DriverLocationUpdated(driverId, lat, lng);
+                    dict.TryGetValue("currentRideId", out var rideIdStr);
+                    int.TryParse(rideIdStr, out var rideId);
+
+                    var payload = new DriverLocationEvent
+                    {
+                        RideId = rideId,
+                        DriverId = driverId,
+                        Lat = lat,
+                        Lng = lng,
+                        UpdatedAtUtc = DateTime.UtcNow
+                    };
+
+                    await _userHub.Clients.Group($"user:{userId}")
+                        .DriverLocationUpdated(payload);
                 }
             }
             catch (Exception ex)

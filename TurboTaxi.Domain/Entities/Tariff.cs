@@ -8,8 +8,9 @@ namespace TurboTaxi.Domain.Entities
 {
     public class Tariff : BaseEntity
     {
-        public string Country { get; set; } = "AZ";
-        public string City { get; set; } = "Baku";
+        public string CountryCode { get; set; } = "RU";
+        public string CityKey { get; set; } = null!;
+        public string DisplayCityName { get; set; } = null!;
 
         public VehicleType VehicleType { get; set; } = VehicleType.Standard;
 

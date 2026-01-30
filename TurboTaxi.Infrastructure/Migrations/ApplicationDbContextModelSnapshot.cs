@@ -33,8 +33,20 @@ namespace TurboTaxi.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<double?>("CurrentLatitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("CurrentLongitude")
+                        .HasColumnType("float");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsVerified")
                         .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("UpdatedTime")
                         .HasColumnType("datetime2");
@@ -309,6 +321,46 @@ namespace TurboTaxi.Infrastructure.Migrations
                     b.ToTable("Ratings");
                 });
 
+            modelBuilder.Entity("TurboTaxi.Domain.Entities.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("JwtId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("TurboTaxi.Domain.Entities.Ride", b =>
                 {
                     b.Property<int>("Id")
@@ -464,16 +516,20 @@ namespace TurboTaxi.Infrastructure.Migrations
                     b.Property<decimal?>("CancellationFee")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("City")
+                    b.Property<string>("CityKey")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("Country")
+                    b.Property<string>("CountryCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("DisplayCityName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal?>("FreeKm")
                         .HasColumnType("decimal(18,2)");
@@ -519,7 +575,306 @@ namespace TurboTaxi.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CityKey", "CountryCode")
+                        .IsUnique();
+
                     b.ToTable("Tariffs");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            BaseFare = 180m,
+                            CityKey = "moscow",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Москва",
+                            IsActive = true,
+                            MinimumFare = 350m,
+                            PricePerKm = 28m,
+                            PricePerMinute = 9m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 2,
+                            BaseFare = 160m,
+                            CityKey = "saint_petersburg",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Санкт-Петербург",
+                            IsActive = true,
+                            MinimumFare = 320m,
+                            PricePerKm = 25m,
+                            PricePerMinute = 8m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 3,
+                            BaseFare = 130m,
+                            CityKey = "yekaterinburg",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Екатеринбург",
+                            IsActive = true,
+                            MinimumFare = 280m,
+                            PricePerKm = 22m,
+                            PricePerMinute = 7m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 4,
+                            BaseFare = 130m,
+                            CityKey = "novosibirsk",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Новосибирск",
+                            IsActive = true,
+                            MinimumFare = 280m,
+                            PricePerKm = 22m,
+                            PricePerMinute = 7m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 5,
+                            BaseFare = 120m,
+                            CityKey = "kazan",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Казань",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 6,
+                            BaseFare = 120m,
+                            CityKey = "krasnoyarsk",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Красноярск",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 7,
+                            BaseFare = 125m,
+                            CityKey = "nizhny_novgorod",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Нижний Новгород",
+                            IsActive = true,
+                            MinimumFare = 270m,
+                            PricePerKm = 21m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 8,
+                            BaseFare = 120m,
+                            CityKey = "chelyabinsk",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Челябинск",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 9,
+                            BaseFare = 115m,
+                            CityKey = "ufa",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Уфа",
+                            IsActive = true,
+                            MinimumFare = 250m,
+                            PricePerKm = 19m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 10,
+                            BaseFare = 120m,
+                            CityKey = "samara",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Самара",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 11,
+                            BaseFare = 125m,
+                            CityKey = "rostov_on_don",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Ростов-на-Дону",
+                            IsActive = true,
+                            MinimumFare = 270m,
+                            PricePerKm = 21m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 12,
+                            BaseFare = 130m,
+                            CityKey = "krasnodar",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Краснодар",
+                            IsActive = true,
+                            MinimumFare = 280m,
+                            PricePerKm = 22m,
+                            PricePerMinute = 7m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 13,
+                            BaseFare = 115m,
+                            CityKey = "omsk",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Омск",
+                            IsActive = true,
+                            MinimumFare = 250m,
+                            PricePerKm = 19m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 14,
+                            BaseFare = 120m,
+                            CityKey = "voronezh",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Воронеж",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 15,
+                            BaseFare = 125m,
+                            CityKey = "perm",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Пермь",
+                            IsActive = true,
+                            MinimumFare = 270m,
+                            PricePerKm = 21m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 16,
+                            BaseFare = 120m,
+                            CityKey = "volgograd",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Волгоград",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 17,
+                            BaseFare = 130m,
+                            CityKey = "tyumen",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Тюмень",
+                            IsActive = true,
+                            MinimumFare = 280m,
+                            PricePerKm = 22m,
+                            PricePerMinute = 7m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 18,
+                            BaseFare = 115m,
+                            CityKey = "saratov",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Саратов",
+                            IsActive = true,
+                            MinimumFare = 250m,
+                            PricePerKm = 19m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 19,
+                            BaseFare = 110m,
+                            CityKey = "dagestan_avg",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Дагестан (orta)",
+                            IsActive = true,
+                            MinimumFare = 230m,
+                            PricePerKm = 18m,
+                            PricePerMinute = 5m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 20,
+                            BaseFare = 200m,
+                            CityKey = "norilsk",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Норильск",
+                            IsActive = true,
+                            MinimumFare = 400m,
+                            PricePerKm = 35m,
+                            PricePerMinute = 12m,
+                            VehicleType = 0
+                        },
+                        new
+                        {
+                            Id = 21,
+                            BaseFare = 120m,
+                            CityKey = "default_ru",
+                            CountryCode = "RU",
+                            CreatedTime = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            DisplayCityName = "Russia Default",
+                            IsActive = true,
+                            MinimumFare = 260m,
+                            PricePerKm = 20m,
+                            PricePerMinute = 6m,
+                            VehicleType = 0
+                        });
                 });
 
             modelBuilder.Entity("TurboTaxi.Domain.Entities.User", b =>
@@ -549,6 +904,10 @@ namespace TurboTaxi.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -748,6 +1107,17 @@ namespace TurboTaxi.Infrastructure.Migrations
                     b.Navigation("ToDriver");
 
                     b.Navigation("ToUser");
+                });
+
+            modelBuilder.Entity("TurboTaxi.Domain.Entities.RefreshToken", b =>
+                {
+                    b.HasOne("TurboTaxi.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("TurboTaxi.Domain.Entities.Ride", b =>

@@ -12,6 +12,7 @@ namespace TurboTaxi.Models.Rides
 
     public class CreateRideResponse
     {
+        public bool Success { get; set; } = true;
         public int RideId { get; set; }
         public string Status { get; set; } = null!;
         public List<int> CandidateDriverIds { get; set; } = new();
@@ -24,10 +25,25 @@ namespace TurboTaxi.Models.Rides
 
     public class RideAcceptedResponse
     {
+        public bool Success { get; set; } = true;
         public int RideId { get; set; }
         public int DriverId { get; set; }
         public string Status { get; set; } = null!;
     }
+
+public class ArriveRideRequest
+{
+    public int DriverId { get; set; }
+}
+
+public class RideArrivedResponse
+{
+    public bool Success { get; set; } = true;
+    public int RideId { get; set; }
+    public int DriverId { get; set; }
+    public string Status { get; set; } = null!;
+    public DateTime ArrivedAtUtc { get; set; }
+}
 
     public class StartRideRequest
     {
@@ -36,6 +52,7 @@ namespace TurboTaxi.Models.Rides
 
     public class StartRideResponse
     {
+        public bool Success { get; set; } = true;
         public int RideId { get; set; }
         public string Status { get; set; } = null!;
         public DateTime StartedAtUtc { get; set; }
@@ -49,6 +66,7 @@ namespace TurboTaxi.Models.Rides
 
     public class RideFinishedResponse
     {
+        public bool Success { get; set; } = true;
         public int RideId { get; set; }
         public string Status { get; set; } = null!;
         public decimal FinalPrice { get; set; }
@@ -67,6 +85,7 @@ namespace TurboTaxi.Models.Rides
 
     public class CancelRideResponse
     {
+        public bool Success { get; set; } = true;
         public int RideId { get; set; }
         public string Status { get; set; } = null!;
     }

@@ -17,6 +17,7 @@ namespace TurboTaxi.Infrastructure.Services
         private readonly IRedisService _redis;
         private readonly IRideNotificationService _notification;
         private readonly IRouteEstimationService _routeEstimation;
+        private readonly RideQueryService _queryService;
         private readonly ILogger<RideService> _logger;
 
         public RideService(
@@ -24,12 +25,14 @@ namespace TurboTaxi.Infrastructure.Services
             IRedisService redis,
             IRideNotificationService notification,
             IRouteEstimationService routeEstimation,
+            RideQueryService queryService,
             ILogger<RideService> logger)
         {
             _db = db;
             _redis = redis;
             _notification = notification;
             _routeEstimation = routeEstimation;
+            _queryService = queryService;
             _logger = logger;
         }
 
@@ -467,6 +470,82 @@ namespace TurboTaxi.Infrastructure.Services
 
         #endregion
 
+        #region Arrive Ride
+
+        public async Task<RideArrivedResponse> ArriveRideAsync(int rideId, ArriveRideRequest request, CancellationToken ct = default)
+        {
+            _logger.LogInformation("🚘 Driver #{DriverId} arrived for ride #{RideId}", request.DriverId, rideId);
+
+            var ride = await _db.Rides
+                .Include(r => r.StartLocation)
+                .Include(r => r.EndLocation)
+                .FirstOrDefaultAsync(r => r.Id == rideId, ct);
+
+            if (ride == null)
+            {
+                _logger.LogWarning("❌ Ride #{RideId} not found", rideId);
+                throw new KeyNotFoundException($"Ride #{rideId} not found");
+            }
+
+            if (ride.Status != RideStatus.Approved)
+            {
+                _logger.LogWarning("❌ Ride #{RideId} not in Approved state (current: {Status})", rideId, ride.Status);
+                throw new InvalidOperationException($"Ride is not in Approved state, current state: {ride.Status}");
+            }
+
+            if (ride.DriverId != request.DriverId)
+            {
+                _logger.LogWarning("❌ Driver mismatch on ride #{RideId}. Expected {ExpectedDriver}, got {ActualDriver}", rideId, ride.DriverId, request.DriverId);
+                throw new InvalidOperationException("Driver mismatch");
+            }
+
+            var arrivedAt = DateTime.UtcNow;
+            ride.Status = RideStatus.Arrived;
+            await _db.SaveChangesAsync(ct);
+
+            // Notify user
+            try
+            {
+                await _notification.NotifyUserAsync(ride.UserId, new
+                {
+                    RideId = ride.Id,
+                    Status = ride.Status.ToString(),
+                    ArrivedAt = arrivedAt,
+                    Message = "Driver has arrived at pickup point"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to notify user #{UserId} about arrival", ride.UserId);
+            }
+
+            // Notify driver (confirmation)
+            try
+            {
+                await _notification.NotifyDriverAsync(request.DriverId, new
+                {
+                    RideId = ride.Id,
+                    Status = ride.Status.ToString(),
+                    ArrivedAt = arrivedAt,
+                    Message = "Marked as arrived. You can start the ride when passenger is onboard."
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to notify driver #{DriverId} about arrival", request.DriverId);
+            }
+
+            return new RideArrivedResponse
+            {
+                RideId = ride.Id,
+                DriverId = request.DriverId,
+                Status = ride.Status.ToString(),
+                ArrivedAtUtc = arrivedAt
+            };
+        }
+
+        #endregion
+
         #region Start Ride
 
         public async Task<StartRideResponse> StartRideAsync(int rideId, StartRideRequest request, CancellationToken ct = default)
@@ -484,10 +563,10 @@ namespace TurboTaxi.Infrastructure.Services
                 throw new KeyNotFoundException($"Ride #{rideId} not found");
             }
 
-            if (ride.Status != RideStatus.Approved)
+            if (ride.Status != RideStatus.Approved && ride.Status != RideStatus.Arrived)
             {
                 _logger.LogWarning($"? Ride #{rideId} is not Approved (current: {ride.Status})");
-                throw new InvalidOperationException($"Ride is not in Approved state, current state: {ride.Status}");
+                throw new InvalidOperationException($"Ride is not ready to start, current state: {ride.Status}");
             }
 
             if (ride.DriverId != request.DriverId)
@@ -827,6 +906,30 @@ namespace TurboTaxi.Infrastructure.Services
                 RideId = ride.Id,
                 Status = ride.Status.ToString()
             };
+        }
+
+        #endregion
+
+        #region Query Methods (delegated to RideQueryService)
+
+        public Task<RideDetailResponse> GetByIdAsync(int rideId, int requestingUserId, CancellationToken ct = default)
+        {
+            return _queryService.GetByIdAsync(rideId, requestingUserId, ct);
+        }
+
+        public Task<RideDetailResponse?> GetActiveRideAsync(int userId, CancellationToken ct = default)
+        {
+            return _queryService.GetActiveRideAsync(userId, ct);
+        }
+
+        public Task<RideHistoryResponse> GetHistoryAsync(int userId, RideHistoryQuery query, CancellationToken ct = default)
+        {
+            return _queryService.GetHistoryAsync(userId, query, ct);
+        }
+
+        public Task<CancelRideResponse> CancelRideAsync(int rideId, int userId, string? reason, string canceledBy, CancellationToken ct = default)
+        {
+            throw new NotImplementedException("Use specific cancel methods");
         }
 
         #endregion

@@ -15,7 +15,8 @@ namespace TurboTaxi.Application.CQRS.Auth.Commands.Register
                 FullName = request.FullName,
                 PhoneNumber = request.PhoneNumber,
                 Email = request.Email,
-                Password = request.Password
+                Password = request.Password,
+                Role = request.Role
             };
             return _authService.RegisterAsync(dto, cancellationToken);
         }

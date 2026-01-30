@@ -55,5 +55,29 @@ namespace TurboTaxi.API.Controllers
             });
             return Ok(new { geoKey, count = results.Length, drivers = data });
         }
+
+        [HttpGet("drivers")]
+        public async Task<IActionResult> ListDrivers()
+        {
+            try
+            {
+                var standard = await _redis.GeoRadiusAsync("geo:drivers:standard", 0, 0, 20000);
+                var premium = await _redis.GeoRadiusAsync("geo:drivers:premium", 0, 0, 20000);
+                var economy = await _redis.GeoRadiusAsync("geo:drivers:economy", 0, 0, 20000);
+
+                return Ok(new
+                {
+                    success = true,
+                    totalDrivers = standard.Length + premium.Length + economy.Length,
+                    standard = standard.Select(r => new { driverId = r.Member.ToString(), distanceKm = r.Distance }).ToArray(),
+                    premium = premium.Select(r => new { driverId = r.Member.ToString(), distanceKm = r.Distance }).ToArray(),
+                    economy = economy.Select(r => new { driverId = r.Member.ToString(), distanceKm = r.Distance }).ToArray()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
     }
 }

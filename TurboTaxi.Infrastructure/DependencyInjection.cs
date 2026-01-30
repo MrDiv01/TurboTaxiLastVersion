@@ -15,7 +15,8 @@ namespace TurboTaxi.Infrastructure
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
             services.AddHttpClient<IRouteEstimationService, RouteEstimationService>();
-            
+            services.AddHttpClient<IReverseGeocodingService, GoogleMapsReverseGeocodingService>();
+
             // Add memory cache for deduplication
             services.AddMemoryCache();
 
@@ -24,11 +25,19 @@ namespace TurboTaxi.Infrastructure
             services.AddScoped<IUserCrudService, UserCrudService>();
             services.AddScoped<IVehicleCrudService, VehicleCrudService>();
             services.AddScoped<IDriverCrudService, DriverCrudService>();
+            services.AddScoped<IDriverStatusService, DriverStatusService>();
             services.AddScoped<IRideService, RideService>();
             services.AddScoped<IPendingRideChecker, PendingRideChecker>();
             services.AddScoped<IOffRouteDetectionService, OffRouteDetectionService>();
             services.AddScoped<IRideUserLookupService, RideUserLookupService>();
-            
+            services.AddScoped<RideQueryService>();
+
+            // Pricing and estimation services
+            services.AddScoped<ICityResolver, RussianCityResolver>();
+            services.AddScoped<ITariffService, TariffService>();
+            services.AddScoped<IPricingService, PricingService>();
+            services.AddScoped<IRideEstimateService, RideEstimateService>();
+
             return services;
         }
     }

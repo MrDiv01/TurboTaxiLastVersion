@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using TurboTaxi.Application.Interfaces;
 using TurboTaxi.Models.Rides;
 
@@ -9,27 +12,113 @@ namespace TurboTaxi.API.Controllers
     public class RidesController : ControllerBase
     {
         private readonly IRideService _rideService;
+        private readonly IRideEstimateService _estimateService;
         private readonly ILogger<RidesController> _logger;
-        
-        public RidesController(IRideService rideService, ILogger<RidesController> logger)
+
+        public RidesController(
+            IRideService rideService, 
+            IRideEstimateService estimateService,
+            ILogger<RidesController> logger)
         {
             _rideService = rideService;
+            _estimateService = estimateService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Estimate ride price based on pickup and dropoff coordinates
+        /// </summary>
+        [HttpPost("estimate")]
+        public async Task<ActionResult<RideEstimateResponse>> EstimateRide([FromBody] RideEstimateRequest request, CancellationToken ct)
+        {
+            try
+            {
+                // Validation
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, error = "Request body is required" });
+                }
+
+                if (request.PickupLat < -90 || request.PickupLat > 90)
+                {
+                    return BadRequest(new { success = false, error = "Pickup latitude must be between -90 and 90" });
+                }
+
+                if (request.PickupLng < -180 || request.PickupLng > 180)
+                {
+                    return BadRequest(new { success = false, error = "Pickup longitude must be between -180 and 180" });
+                }
+
+                if (request.DropoffLat < -90 || request.DropoffLat > 90)
+                {
+                    return BadRequest(new { success = false, error = "Dropoff latitude must be between -90 and 90" });
+                }
+
+                if (request.DropoffLng < -180 || request.DropoffLng > 180)
+                {
+                    return BadRequest(new { success = false, error = "Dropoff longitude must be between -180 and 180" });
+                }
+
+                _logger.LogInformation("POST /api/rides/estimate - Pickup: ({PickupLat}, {PickupLng}), Dropoff: ({DropoffLat}, {DropoffLng})",
+                    request.PickupLat, request.PickupLng, request.DropoffLat, request.DropoffLng);
+
+                var result = await _estimateService.EstimateRideAsync(request, ct);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation during ride estimation");
+                return BadRequest(new { success = false, error = ex.Message });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Resource not found during ride estimation");
+                return NotFound(new { success = false, error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error estimating ride");
+                return StatusCode(500, new { success = false, error = "Failed to estimate ride. Please try again later." });
+            }
+        }
+
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<CreateRideResponse>> CreateRide([FromBody] CreateRideRequest request, CancellationToken ct)
         {
             try
             {
-                _logger.LogInformation($"?? POST /api/rides - Creating ride for User #{request.UserId}");
+                if (request == null)
+                {
+                    return BadRequest(new { success = false, error = "Request body is required" });
+                }
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                if (userId == 0)
+                {
+                    return Unauthorized(new { success = false, error = "User not authenticated" });
+                }
+
+                request.UserId = userId;
+
+                _logger.LogInformation($"🚖 POST /api/rides - Creating ride for User #{request.UserId}");
                 var result = await _rideService.CreateRideAsync(request, ct);
                 return Ok(result);
             }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning(ex, "Resource not found while creating ride");
+                return NotFound(new { success = false, error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Invalid operation while creating ride");
+                return BadRequest(new { success = false, error = ex.Message });
+            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "? Error creating ride");
-                return StatusCode(500, new { error = "Failed to create ride", details = ex.Message });
+                _logger.LogError(ex, "❌ Error creating ride");
+                return StatusCode(500, new { success = false, error = "Failed to create ride. Please try again later." });
             }
         }
 
@@ -52,6 +141,28 @@ namespace TurboTaxi.API.Controllers
             {
                 _logger.LogError(ex, $"Error accepting ride #{rideId}");
                 return StatusCode(500, new { error = "Failed to accept ride", details = ex.Message });
+            }
+        }
+
+        [HttpPost("{rideId}/arrive")]
+        public async Task<ActionResult<RideArrivedResponse>> ArriveRide(int rideId, [FromBody] ArriveRideRequest request, CancellationToken ct)
+        {
+            try
+            {
+                return Ok(await _rideService.ArriveRideAsync(rideId, request, ct));
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(new { error = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error marking ride #{rideId} as arrived");
+                return StatusCode(500, new { error = "Failed to mark ride as arrived", details = ex.Message });
             }
         }
 
@@ -140,6 +251,70 @@ namespace TurboTaxi.API.Controllers
             {
                 _logger.LogError(ex, $"Error canceling ride #{rideId} by driver");
                 return StatusCode(500, new { error = "Failed to cancel ride", details = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Get ride details by ID
+        /// </summary>
+        [HttpGet("{rideId:int}")]
+        [Authorize]
+        public async Task<ActionResult<RideDetailResponse>> GetById(int rideId, CancellationToken ct)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var ride = await _rideService.GetByIdAsync(rideId, userId, ct);
+                return Ok(ride);
+            }
+            catch (KeyNotFoundException ex) { return NotFound(new { success = false, message = ex.Message }); }
+            catch (UnauthorizedAccessException ex) { return Forbid(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ride {RideId}", rideId);
+                return StatusCode(500, new { success = false, message = "Failed to get ride" });
+            }
+        }
+
+        /// <summary>
+        /// Get current user's active ride
+        /// </summary>
+        [HttpGet("active")]
+        [Authorize]
+        public async Task<ActionResult<ActiveRideResponse>> GetActive(CancellationToken ct)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var ride = await _rideService.GetActiveRideAsync(userId, ct);
+                return Ok(new ActiveRideResponse { Ride = ride });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting active ride");
+                return StatusCode(500, new { success = false, message = "Failed to get active ride" });
+            }
+        }
+
+        /// <summary>
+        /// Get user's ride history with pagination
+        /// </summary>
+        [HttpGet("history")]
+        [Authorize]
+        public async Task<ActionResult<RideHistoryResponse>> GetHistory([FromQuery] RideHistoryQuery query, CancellationToken ct)
+        {
+            try
+            {
+                if (query.PageSize > 100) query = query with { PageSize = 100 };
+
+                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+                var history = await _rideService.GetHistoryAsync(userId, query, ct);
+                return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting ride history");
+                return StatusCode(500, new { success = false, message = "Failed to get ride history" });
             }
         }
     }

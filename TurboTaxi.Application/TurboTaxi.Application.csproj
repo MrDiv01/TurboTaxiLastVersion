@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Folder Include="CQRS\Auth\Handlers\" />
+    <Folder Include="CQRS\Drivers\Queries\GetByUserId\" />
     <Folder Include="CQRS\Users\Commands\Create\" />
   </ItemGroup>
 

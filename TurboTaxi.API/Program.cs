@@ -2,6 +2,10 @@ using TurboTaxi.Application;
 using TurboTaxi.Infrastructure;
 using TurboTaxi.Realtime;
 using TurboTaxi.Realtime.Hubs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Cryptography;
 
 try
 {
@@ -22,7 +26,11 @@ try
     builder.Services.AddRealtime(builder.Configuration);
     Console.WriteLine("[STARTUP] Realtime services registered");
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        });
 
     // SignalR
     builder.Services.AddSignalR(options =>
@@ -66,7 +74,56 @@ try
 
     // Swagger
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        // Ambiguous action resolver - fixes "Multiple operations with same verb and path"
+        options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+
+        // Custom schema IDs to avoid conflicts
+        options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+    });
+    Console.WriteLine("[SWAGGER] Configuration complete");
+
+    // JWT Authentication
+    var jwtKey = builder.Configuration["JWTSettings:Key"] ?? throw new InvalidOperationException("JWT key missing");
+    byte[] originalKeyBytes = jwtKey.StartsWith("base64:")
+        ? Convert.FromBase64String(jwtKey.Substring(7))
+        : Encoding.UTF8.GetBytes(jwtKey);
+    byte[] keyBytes = originalKeyBytes.Length < 32 ? SHA256.HashData(originalKeyBytes) : originalKeyBytes;
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+
+        // Enable JWT for SignalR
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+    Console.WriteLine("[AUTH] JWT Authentication configured");
 
     var app = builder.Build();
     Console.WriteLine("[STARTUP] Application built successfully");
@@ -78,25 +135,38 @@ try
     // Static files
     app.UseStaticFiles();
 
-    // Swagger (h?mi?? aktiv)
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    // Swagger (həmişə aktiv)
+    try
     {
-        c.RoutePrefix = string.Empty;
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "TurboTaxi API v1");
-    });
+        app.UseSwagger();
+
+        app.UseSwaggerUI(c =>
+        {
+            // Serve Swagger UI at /swagger to avoid clashing with wwwroot/index.html
+            c.RoutePrefix = "swagger";
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "TurboTaxi API v1");
+        });
+        Console.WriteLine("[SWAGGER] Middleware configured successfully");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[SWAGGER ERROR] {ex.Message}");
+        Console.WriteLine($"[SWAGGER ERROR] StackTrace: {ex.StackTrace}");
+    }
 
     // CORS
     app.UseCors("AllowAll");
 
-    // Authentication/Authorization
+    // Authentication & Authorization (Authentication must come first!)
+    app.UseAuthentication();
     app.UseAuthorization();
 
     // Controllers
     app.MapControllers();
 
-    // SignalR Hub
-    app.MapHub<DriverHub>("/hubs/driver").RequireCors("AllowAll");
+    // SignalR Hubs
+    app.MapHub<DriverHub>("/hubs/driver").RequireCors("AllowAll").RequireAuthorization();
+    app.MapHub<UserHub>("/hubs/user").RequireCors("AllowAll").RequireAuthorization();
 
     Console.WriteLine("[STARTUP] Middleware configured");
 
@@ -136,7 +206,7 @@ try
         if (env.IsDevelopment())
         {
             Console.WriteLine("\nWeb Interfaces:");
-            Console.WriteLine("   Swagger:        /");
+            Console.WriteLine("   Swagger:        /swagger");
             Console.WriteLine("   User Panel:     /user.html");
             Console.WriteLine("   Driver Panel:   /driver.html");
             Console.WriteLine("   Debug Tools:    /debug-connection.html");

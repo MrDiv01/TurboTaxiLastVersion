@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboTaxi - Choose Your Role</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            text-align: center;
+            color: white;
+        }
+
+        .logo {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 56px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            margin-bottom: 60px;
+            opacity: 0.9;
+        }
+
+        .role-selector {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .role-card {
+            background: white;
+            border-radius: 20px;
+            padding: 50px 40px;
+            width: 320px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .role-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .role-card .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        .role-card h2 {
+            font-size: 32px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .role-card p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .role-card.user {
+            border-top: 5px solid #667eea;
+        }
+
+        .role-card.driver {
+            border-top: 5px solid #28a745;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 40px;
+            }
+
+            .logo {
+                font-size: 60px;
+            }
+
+            .role-card {
+                width: 100%;
+                max-width: 320px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚕</div>
+        <h1>TurboTaxi</h1>
+        <p class="subtitle">Choose how you want to continue</p>
+
+        <div class="role-selector">
+            <a href="/user-login.html" class="role-card user">
+                <div class="icon">🚕</div>
+                <h2>I'm a Passenger</h2>
+                <p>Book rides, track your driver in real-time, and get to your destination safely.</p>
+            </a>
+
+            <a href="/driver-login.html" class="role-card driver">
+                <div class="icon">🚗</div>
+                <h2>I'm a Driver</h2>
+                <p>Start earning by accepting ride requests and providing excellent service.</p>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

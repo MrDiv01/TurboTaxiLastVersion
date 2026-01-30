@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboTaxi - Driver Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .toggle-status {
+            background: white;
+            color: #28a745;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .toggle-status.offline {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 22px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #dc3545;
+        }
+
+        .status-dot.online {
+            background: #28a745;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #28a745;
+        }
+
+        .readonly-input {
+            background: #f1f3f5;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .readonly-input {
+            background: #f1f3f5;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            margin-right: 10px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-primary {
+            background: #007bff;
+            color: white;
+            width: 100%;
+        }
+
+        .ride-request {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .ride-request h3 {
+            color: #856404;
+            margin-bottom: 15px;
+        }
+
+        .ride-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .ride-info:last-child {
+            border-bottom: none;
+        }
+
+        .ride-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            z-index: 1000;
+            display: none;
+            border-left: 5px solid #ffc107;
+        }
+
+        .notification.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .driver-car-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #28a745;
+            padding-left: 10px;
+        }
+
+        .map-card {
+            grid-column: 1 / -1;
+        }
+
+        .map-card {
+            grid-column: 1 / -1;
+        }
+
+        .map-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .map-card-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .map-card-title h2 {
+            margin: 0;
+        }
+
+        .map-card-description {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .map-panel {
+            width: 100%;
+            height: clamp(260px, 45vh, 520px);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        #driver-map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 60px 20px;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 1024px) {
+            body {
+                padding: 15px;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .header-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+
+            .header-actions button {
+                flex: 1;
+                min-width: 140px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .map-panel {
+                height: 240px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            input {
+                font-size: 14px;
+            }
+
+            .btn,
+            .header-actions button {
+                width: 100%;
+            }
+
+            .ride-actions {
+                flex-direction: column;
+            }
+
+            .notification {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+
+            .map-panel {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚗 TurboTaxi - Driver Dashboard</h1>
+        <div class="header-actions">
+            <button class="toggle-status offline" id="status-toggle" onclick="toggleOnlineStatus()">
+                Go Online
+            </button>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Driver Status Card -->
+        <div class="card">
+            <h2>👤 Driver Status</h2>
+            
+            <div class="status-indicator">
+                <div class="status-dot" id="status-dot"></div>
+                <div>
+                    <strong id="status-text">Offline</strong>
+                    <p style="font-size: 14px; color: #666; margin-top: 5px;">
+                        You are currently offline and won't receive ride requests
+                    </p>
+                </div>
+            </div>
+
+            <h3 style="margin: 20px 0 5px 0;">📍 Current Location</h3>
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                Your browser now shares live coordinates automatically. Allow location permission when prompted.
+            </p>
+            <div class="form-group">
+                <label>Latitude</label>
+                <input type="number" step="0.000001" id="driver-lat" class="readonly-input" value="40.409300" readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Longitude</label>
+                <input type="number" step="0.000001" id="driver-lng" class="readonly-input" value="49.867100" readonly>
+            </div>
+
+            <button class="btn btn-primary" style="width: 100%;" onclick="updateLocation()">
+                📍 Update Location
+            </button>
+        </div>
+
+        <!-- Incoming Rides Card -->
+        <div class="card">
+            <h2>🔔 Incoming Ride Requests</h2>
+            <div id="ride-requests">
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p>No pending ride requests</p>
+                    <small>Go online to receive ride requests</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Ride Card -->
+        <div class="card">
+            <h2>🚗 Active Ride</h2>
+            <div id="active-ride">
+                <div class="empty-state">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p>No active ride</p>
+                    <small>Accept a ride request to start</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Card -->
+        <div class="card map-card">
+            <div class="map-card-header">
+                <div class="map-card-title">
+                    <span style="font-size: 26px;">🗺️</span>
+                    <div>
+                        <h2>Live Map</h2>
+                        <p class="map-card-description">Tracks your current position and route</p>
+                    </div>
+                </div>
+            </div>
+            <div class="map-panel">
+                <div id="driver-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Popup -->
+    <div id="notification" class="notification">
+        <h3 id="notif-title"></h3>
+        <p id="notif-message"></p>
+    </div>
+
+    <!-- SignalR & Map Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <script>
+        const API_BASE = window.location.origin.startsWith('file') ? 'https://localhost:7443' : window.location.origin;
+        let connection;
+        let isOnline = false;
+        let currentRideId = null;
+        let locationUpdateInterval;
+        let driverId = localStorage.getItem('driverId');
+        let activeRideDetails = null;
+        let geoWatchId = null;
+        let lastAutoGeoUpdate = 0;
+        const AUTO_LOCATION_PUSH_INTERVAL = 5000;
+        const ROUTING_API_URL = 'https://router.project-osrm.org/route/v1/driving';
+
+        let driverMap;
+        let driverMapInitialized = false;
+        let driverMarker;
+        let driverPickupMarker;
+        let driverDropoffMarker;
+        let driverRouteLine;
+        let driverPickupCoords = null;
+        let driverDropoffCoords = null;
+        let latestDriverCoords = null;
+        let driverRouteStatusKey = null;
+        let driverRouteRequestToken = 0;
+
+        const driverCarIcon = typeof L !== 'undefined'
+            ? L.divIcon({
+                className: 'driver-car-icon',
+                html: '🚘',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+            : null;
+
+        const rideStatusMap = {
+            pending: 'Pending',
+            approved: 'Approved',
+            arrived: 'Arrived',
+            onway: 'OnWay',
+            canceled: 'Canceled',
+            completed: 'Completed',
+            '0': 'Pending',
+            '1': 'Approved',
+            '2': 'Arrived',
+            '3': 'OnWay',
+            '4': 'Canceled',
+            '5': 'Completed'
+        };
+
+        function getStatusInfo(value) {
+            if (value === null || value === undefined) {
+                return { key: 'pending', label: 'Pending' };
+            }
+
+            const str = value.toString().trim();
+            if (rideStatusMap.hasOwnProperty(str)) {
+                const label = rideStatusMap[str];
+                return { key: label.toLowerCase(), label };
+            }
+
+            const lower = str.toLowerCase();
+            if (rideStatusMap.hasOwnProperty(lower)) {
+                const label = rideStatusMap[lower];
+                return { key: lower, label };
+            }
+
+            return { key: lower || 'pending', label: str || 'Pending' };
+        }
+
+        function initDriverMap() {
+            if (driverMapInitialized || typeof L === 'undefined') {
+                return;
+            }
+
+            const initialLat = parseFloat(document.getElementById('driver-lat').value) || 40.4093;
+            const initialLng = parseFloat(document.getElementById('driver-lng').value) || 49.8671;
+            driverMap = L.map('driver-map').setView([initialLat, initialLng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'OpenStreetMap contributors'
+            }).addTo(driverMap);
+            const markerOptions = { title: 'You' };
+            if (driverCarIcon) {
+                markerOptions.icon = driverCarIcon;
+            }
+            driverMarker = L.marker([initialLat, initialLng], markerOptions).addTo(driverMap);
+            driverMapInitialized = true;
+        }
+
+        function updateDriverMarkerPosition(lat, lng) {
+            if (!driverMapInitialized) {
+                initDriverMap();
+            }
+
+            if (driverMarker) {
+                driverMap.removeLayer(driverMarker);
+            }
+            const markerOptions = { title: 'You' };
+            if (driverCarIcon) {
+                markerOptions.icon = driverCarIcon;
+            }
+            driverMarker = L.marker([lat, lng], markerOptions).addTo(driverMap);
+
+            if (!driverMap.getBounds().contains([lat, lng])) {
+                driverMap.panTo([lat, lng], { animate: true });
+            }
+        }
+
+        function setDriverPickupCoords(coords) {
+            driverPickupCoords = coords;
+            if (!driverMapInitialized) {
+                initDriverMap();
+            }
+            if (driverPickupCoords) {
+                if (!driverPickupMarker) {
+                    driverPickupMarker = L.marker(driverPickupCoords, { title: 'Pickup' }).addTo(driverMap);
+                } else {
+                    driverPickupMarker.setLatLng(driverPickupCoords);
+                }
+            } else if (driverPickupMarker) {
+                driverMap.removeLayer(driverPickupMarker);
+                driverPickupMarker = null;
+            }
+        }
+
+        function setDriverDropoffCoords(coords) {
+            driverDropoffCoords = coords;
+            if (!driverMapInitialized) {
+                initDriverMap();
+            }
+            if (driverDropoffCoords) {
+                if (!driverDropoffMarker) {
+                    driverDropoffMarker = L.marker(driverDropoffCoords, { title: 'Destination' }).addTo(driverMap);
+                } else {
+                    driverDropoffMarker.setLatLng(driverDropoffCoords);
+                }
+            } else if (driverDropoffMarker) {
+                driverMap.removeLayer(driverDropoffMarker);
+                driverDropoffMarker = null;
+            }
+        }
+
+        function getLatLngFromLocation(location) {
+            if (!location) {
+                return null;
+            }
+            let lat = location.lat ?? location.Lat;
+            let lng = location.lng ?? location.Lng;
+            lat = typeof lat === 'number' ? lat : parseFloat(lat);
+            lng = typeof lng === 'number' ? lng : parseFloat(lng);
+            if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+                return [lat, lng];
+            }
+            return null;
+        }
+
+        function updateDriverMapForRide(ride) {
+            if (!ride) {
+                resetDriverMapOverlays();
+                return;
+            }
+            const pickupCoords = getLatLngFromLocation(ride.pickup);
+            const dropoffCoords = getLatLngFromLocation(ride.dropoff);
+            setDriverPickupCoords(pickupCoords);
+            setDriverDropoffCoords(dropoffCoords);
+            refreshDriverRouteLine();
+        }
+
+        async function refreshDriverRouteLine() {
+            if (!latestDriverCoords || !driverMapInitialized) {
+                return;
+            }
+
+            let targetCoords = null;
+            if (driverRouteStatusKey === 'approved' || driverRouteStatusKey === 'arrived') {
+                targetCoords = driverPickupCoords;
+            } else if (driverRouteStatusKey === 'onway') {
+                targetCoords = driverDropoffCoords;
+            }
+
+            if (!targetCoords) {
+                driverRouteRequestToken++;
+                if (driverRouteLine) {
+                    driverMap.removeLayer(driverRouteLine);
+                    driverRouteLine = null;
+                }
+                return;
+            }
+
+            const token = ++driverRouteRequestToken;
+            try {
+                const latLngs = await fetchRouteLatLngs(latestDriverCoords, targetCoords);
+                if (token !== driverRouteRequestToken) {
+                    return;
+                }
+                if (!driverRouteLine) {
+                    driverRouteLine = L.polyline(latLngs, { color: '#28a745', weight: 4, dashArray: '6 6' }).addTo(driverMap);
+                } else {
+                    driverRouteLine.setLatLngs(latLngs);
+                }
+                const bounds = L.latLngBounds(latLngs);
+                driverMap.fitBounds(bounds.pad(0.15));
+            } catch (error) {
+                logEvent('⚠️ Driver Route Fetch Failed', { error: error.message });
+                if (!driverRouteLine) {
+                    driverRouteLine = L.polyline([latestDriverCoords, targetCoords], { color: '#28a745', weight: 4, dashArray: '6 6' }).addTo(driverMap);
+                } else {
+                    driverRouteLine.setLatLngs([latestDriverCoords, targetCoords]);
+                }
+            }
+        }
+
+        function resetDriverMapOverlays() {
+            driverPickupCoords = null;
+            driverDropoffCoords = null;
+            driverRouteStatusKey = null;
+            driverRouteRequestToken++;
+            if (driverPickupMarker) {
+                driverMap.removeLayer(driverPickupMarker);
+                driverPickupMarker = null;
+            }
+            if (driverDropoffMarker) {
+                driverMap.removeLayer(driverDropoffMarker);
+                driverDropoffMarker = null;
+            }
+            if (driverRouteLine) {
+                driverMap.removeLayer(driverRouteLine);
+                driverRouteLine = null;
+            }
+        }
+
+        async function fetchRouteLatLngs(fromCoords, toCoords) {
+            if (!fromCoords || !toCoords) {
+                throw new Error('Missing coordinates for routing');
+            }
+
+            const url = `${ROUTING_API_URL}/${fromCoords[1]},${fromCoords[0]};${toCoords[1]},${toCoords[0]}?overview=full&geometries=geojson`;
+            const response = await fetch(url);
+            const dataText = await response.text();
+            const data = dataText ? JSON.parse(dataText) : null;
+
+            if (!response.ok || !data?.routes?.length) {
+                throw new Error(`Routing API error ${response.status}`);
+            }
+
+            return data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+        }
+
+        // Check authentication
+        const token = localStorage.getItem('accessToken');
+        const userId = localStorage.getItem('userId');
+        
+        if (!token) {
+            window.location.href = '/index.html';
+        }
+
+        async function loadDriverProfile() {
+            if (driverId) {
+                return driverId;
+            }
+
+            const resp = await fetch(`${API_BASE}/api/drivers/me`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const profileText = await resp.text();
+            const profile = profileText ? JSON.parse(profileText) : null;
+            if (resp.ok && profile && profile.id) {
+                driverId = profile.id;
+                localStorage.setItem('driverId', profile.id);
+                logEvent('👤 Loaded Driver Profile', profile);
+                return driverId;
+            }
+
+            throw new Error(`Failed to load driver profile (${resp.status})`);
+        }
+
+        // Initialize SignalR
+        async function initSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(`${API_BASE}/hubs/driver`, {
+                    accessTokenFactory: () => token
+                })
+                .withAutomaticReconnect()
+                .build();
+
+            // Handle new ride request (server sends: requestId, payload)
+            connection.on("NewRideRequest", (requestId, data) => {
+                logEvent('🔔 New Ride Request!', { requestId, data });
+                showNotification('New Ride Request', `Pickup: ${data?.pickupAddress || 'Loading...'}`);
+                displayRideRequest(data);
+            });
+
+            // Handle ride cancelled by user
+            connection.on("RideCancelled", (data) => {
+                logEvent('❌ Ride Cancelled by User', data);
+                showNotification('Ride Cancelled', 'The user cancelled the ride');
+                removeRideRequest(data.rideId);
+                if (data.rideId === currentRideId) {
+                    currentRideId = null;
+                    activeRideDetails = null;
+                    resetDriverMapOverlays();
+                    document.getElementById('active-ride').innerHTML = `
+                        <div class="empty-state">
+                            <p>Ride cancelled by passenger.</p>
+                            <small>Waiting for new ride requests...</small>
+                        </div>
+                    `;
+                }
+            });
+
+            try {
+                await connection.start();
+                logEvent('✅ Connected to Driver Hub', { status: 'Connected' });
+
+                // Ensure we know driverId
+                try {
+                    await loadDriverProfile();
+                } catch (err) {
+                    logEvent('❌ Failed to load driver profile', { error: err.message });
+                }
+
+                // Subscribe to driver group using driverId
+                if (driverId) {
+                    await connection.invoke('SubscribeDriver', driverId.toString());
+                    logEvent('✅ Subscribed to Driver Group', { driverId });
+                }
+            } catch (err) {
+                logEvent('❌ SignalR Connection Failed', { error: err.message });
+            }
+        }
+
+        // Toggle online/offline status
+        async function toggleOnlineStatus() {
+            const newStatus = !isOnline;
+
+            try {
+                const lat = parseFloat(document.getElementById('driver-lat').value);
+                const lng = parseFloat(document.getElementById('driver-lng').value);
+
+                const response = await fetch(`${API_BASE}/api/drivers/status`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        isAvailable: newStatus,
+                        latitude: lat,
+                        longitude: lng
+                    })
+                });
+
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : {};
+                logEvent('ℹ️ Status API Response', { status: response.status, body: data });
+
+                if (response.ok && data.success) {
+                    isOnline = newStatus;
+                    updateStatusUI();
+
+                    if (isOnline) {
+                        // Start location updates every 10 seconds
+                        locationUpdateInterval = setInterval(() => updateLocation(true), 10000);
+                        logEvent('✅ Status Changed', { status: 'Online' });
+                        // Immediately push current location once
+                        updateLocation(true);
+                    } else {
+                        // Stop location updates
+                        if (locationUpdateInterval) {
+                            clearInterval(locationUpdateInterval);
+                            locationUpdateInterval = null;
+                        }
+                        logEvent('⏸️ Status Changed', { status: 'Offline' });
+                    }
+                } else {
+                    const statusStr = typeof data.status === 'string' ? data.status : (data.status?.toString?.() ?? '');
+                    const errorMsg = data.message || (statusStr ? `Failed: ${statusStr}` : `Failed to update status (${response.status})`);
+                    logEvent('❌ Status Update Error', { error: errorMsg });
+                    showNotification('Error', errorMsg, true);
+                }
+            } catch (error) {
+                logEvent('❌ Status Update Error', { error: error.message });
+                showNotification('Error', 'Failed to update status', true);
+            }
+        }
+
+        // Update location
+        async function updateLocation(isAuto = false) {
+            if (!isOnline) {
+                if (!isAuto) {
+                    showNotification('Error', 'You must be online to update location', true);
+                }
+                return;
+            }
+
+            const lat = parseFloat(document.getElementById('driver-lat').value);
+            const lng = parseFloat(document.getElementById('driver-lng').value);
+
+            try {
+                if (Number.isNaN(lat) || Number.isNaN(lng)) {
+                    throw new Error('Latitude or longitude is invalid');
+                }
+
+                latestDriverCoords = [lat, lng];
+                updateDriverMarkerPosition(lat, lng);
+
+                // Ensure driverId is loaded
+                await loadDriverProfile();
+
+                // Persist to Redis via API so riders can find you
+                const saveResp = await fetch(`${API_BASE}/api/driver/location`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        driverId: Number(driverId || 0),
+                        latitude: lat,
+                        longitude: lng,
+                        vehicleType: 'Standard',
+                        driverStatus: 'Free'
+                    })
+                });
+                const saveText = await saveResp.text();
+                const saveData = saveText ? JSON.parse(saveText) : {};
+                logEvent('🗺️ Location Saved', { status: saveResp.status, body: saveData, auto: isAuto });
+
+                // Also notify via SignalR for live UI updates
+                await connection.invoke("UpdateLocation", lat, lng);
+                logEvent('📍 Location Updated', { lat, lng, auto: isAuto });
+
+                await refreshDriverRouteLine();
+            } catch (error) {
+                logEvent('❌ Location Update Error', { error: error.message, auto: isAuto });
+                if (!isAuto) {
+                    showNotification('Error', 'Failed to update location', true);
+                }
+            }
+        }
+
+        function startGeolocationTracking() {
+            if (geoWatchId !== null) {
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                logEvent('⚠️ Geolocation Unsupported', {});
+                showNotification('Location Error', 'Browser does not support geolocation API.', true);
+                return;
+            }
+
+            const latInput = document.getElementById('driver-lat');
+            const lngInput = document.getElementById('driver-lng');
+
+            geoWatchId = navigator.geolocation.watchPosition(position => {
+                const { latitude, longitude, accuracy } = position.coords;
+                latInput.value = latitude.toFixed(6);
+                lngInput.value = longitude.toFixed(6);
+                logEvent('📡 Geolocation Update', { latitude, longitude, accuracy });
+                latestDriverCoords = [latitude, longitude];
+                updateDriverMarkerPosition(latitude, longitude);
+                refreshDriverRouteLine();
+
+                const now = Date.now();
+                if (now - lastAutoGeoUpdate >= AUTO_LOCATION_PUSH_INTERVAL) {
+                    lastAutoGeoUpdate = now;
+                    updateLocation(true);
+                }
+            }, error => {
+                logEvent('⚠️ Geolocation Error', { code: error.code, message: error.message });
+                if (error.code === error.PERMISSION_DENIED) {
+                    showNotification('Location Permission Needed', 'Please allow location access for auto updates.', true);
+                }
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 5000,
+                timeout: 10000
+            });
+
+            logEvent('✅ Geolocation Tracking Started', {});
+        }
+
+        function stopGeolocationTracking() {
+            if (geoWatchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(geoWatchId);
+                geoWatchId = null;
+                logEvent('🛑 Geolocation Tracking Stopped', {});
+            }
+        }
+
+        // Display ride request
+        function displayRideRequest(ride) {
+            const container = document.getElementById('ride-requests');
+            const rideId = ride.rideId || ride.id || ride.RideId || ride.Id || 'N/A';
+            const distanceKm = Number(ride.distanceKm ?? ride.DistanceKm ?? 0);
+            const estimatedPrice = ride.estimatedPrice ?? ride.finalPrice ?? ride.FinalPrice ?? 0;
+            container.innerHTML = `
+                <div class="ride-request" id="ride-${rideId}">
+                    <h3>🚕 Ride Request #${rideId}</h3>
+                    <div class="ride-info">
+                        <span>Pickup:</span>
+                        <strong>${ride.pickupAddress || ''}</strong>
+                    </div>
+                    <div class="ride-info">
+                        <span>Dropoff:</span>
+                        <strong>${ride.dropoffAddress || ''}</strong>
+                    </div>
+                    <div class="ride-info">
+                        <span>Distance:</span>
+                        <strong>${distanceKm.toFixed(2)} km</strong>
+                    </div>
+                    <div class="ride-info">
+                        <span>Estimated Price:</span>
+                        <strong style="color: #28a745; font-size: 18px;">${estimatedPrice} AZN</strong>
+                    </div>
+                    <div class="ride-actions">
+                        <button class="btn btn-success" onclick="acceptRide(${rideId})">
+                            ✅ Accept
+                        </button>
+                        <button class="btn btn-danger" onclick="rejectRide(${rideId})">
+                            ❌ Reject
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Accept ride
+        async function acceptRide(rideId) {
+            try {
+                if (!driverId) {
+                    await loadDriverProfile();
+                }
+
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/accept`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ driverId: Number(driverId) })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentRideId = rideId;
+                    logEvent('✅ Ride Accepted', { rideId });
+                    showNotification('Success', 'Ride accepted successfully!');
+                    removeRideRequest(rideId);
+                    displayActiveRide(rideId);
+                } else {
+                    showNotification('Error', data.message || 'Failed to accept ride', true);
+                }
+            } catch (error) {
+                logEvent('❌ Accept Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        async function arriveRide(rideId) {
+            try {
+                await loadDriverProfile();
+
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/arrive`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ driverId: Number(driverId) })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    logEvent('📍 Ride Marked Arrived', data);
+                    showNotification('Arrival', 'Marked as arrived. Wait for passenger to enter.');
+                    displayActiveRide(rideId);
+                } else {
+                    const errorMsg = data.error || data.message || `Failed to mark arrived (${response.status})`;
+                    showNotification('Error', errorMsg, true);
+                }
+            } catch (error) {
+                logEvent('❌ Arrive Error', { error: error.message });
+                showNotification('Error', 'Failed to mark arrival', true);
+            }
+        }
+
+        // Reject ride (just remove from UI)
+        function rejectRide(rideId) {
+            logEvent('❌ Ride Rejected', { rideId });
+            removeRideRequest(rideId);
+        }
+
+        // Remove ride request from UI
+        function removeRideRequest(rideId) {
+            const element = document.getElementById(`ride-${rideId}`);
+            if (element) {
+                element.remove();
+            }
+            
+            const container = document.getElementById('ride-requests');
+            if (container.children.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <p>No pending ride requests</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Display active ride
+        async function displayActiveRide(rideId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const ride = await response.json();
+                activeRideDetails = ride;
+                currentRideId = ride.id;
+
+                const statusInfo = getStatusInfo(ride.status);
+                const statusText = statusInfo.label;
+                const normalizedStatus = statusInfo.key;
+                driverRouteStatusKey = normalizedStatus;
+                const actions = [];
+
+                if (normalizedStatus === 'approved') {
+                    actions.push(`<button class="btn btn-success" onclick="arriveRide(${ride.id})">🚶 Driver Arrived</button>`);
+                    actions.push(`<button class="btn btn-danger" onclick="cancelRideByDriver(${ride.id})">❌ Reject Ride</button>`);
+                }
+
+                if (normalizedStatus === 'arrived') {
+                    actions.push(`<button class="btn btn-success" onclick="startRide(${ride.id})">🚀 Start Ride</button>`);
+                    actions.push(`<button class="btn btn-danger" onclick="cancelRideByDriver(${ride.id})">❌ Reject Ride</button>`);
+                }
+
+                if (normalizedStatus === 'onway') {
+                    actions.push(`<button class="btn btn-primary" onclick="finishRide(${ride.id})">🏁 Finish Ride</button>`);
+                }
+
+                const actionsMarkup = actions.length
+                    ? `<div class="ride-actions" style="margin-top: 15px; flex-direction: column; gap: 10px;">${actions.join('')}</div>`
+                    : '';
+
+                const container = document.getElementById('active-ride');
+                container.innerHTML = `
+                    <div class="ride-request" style="background: #d4edda; border-color: #28a745;">
+                        <h3>🚗 Active Ride #${ride.id}</h3>
+                        <div class="ride-info">
+                            <span>Status:</span>
+                            <strong>${statusText}</strong>
+                        </div>
+                        <div class="ride-info">
+                            <span>Passenger:</span>
+                            <strong>${ride.userName}</strong>
+                        </div>
+                        <div class="ride-info">
+                            <span>Passenger Phone:</span>
+                            <strong>${ride.userPhone || '—'}</strong>
+                        </div>
+                        <div class="ride-info">
+                            <span>Pickup:</span>
+                            <strong>${ride.pickup?.address || 'Loading...'}</strong>
+                        </div>
+                        <div class="ride-info">
+                            <span>Dropoff:</span>
+                            <strong>${ride.dropoff?.address || 'Loading...'}</strong>
+                        </div>
+                        <div class="ride-info">
+                            <span>Price:</span>
+                            <strong style="color: #28a745;">${ride.estimatedPrice} AZN</strong>
+                        </div>
+                        ${actionsMarkup}
+                    </div>
+                `;
+
+                updateDriverMapForRide(ride);
+                refreshDriverRouteLine();
+            } catch (error) {
+                logEvent('❌ Load Active Ride Error', { error: error.message });
+            }
+        }
+
+        // Start ride
+        async function startRide(rideId) {
+            try {
+                if (!driverId) {
+                    await loadDriverProfile();
+                }
+
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/start`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ driverId: Number(driverId) })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    logEvent('🚀 Ride Started', { rideId });
+                    showNotification('Success', 'Ride started!');
+                    displayActiveRide(rideId);
+                } else {
+                    showNotification('Error', data.message || 'Failed to start ride', true);
+                }
+            } catch (error) {
+                logEvent('❌ Start Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        // Finish ride
+        async function finishRide(rideId) {
+            try {
+                if (!driverId) {
+                    await loadDriverProfile();
+                }
+
+                const finalPrice = activeRideDetails?.estimatedPrice ?? 0;
+
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/finish`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ driverId: Number(driverId), finalPrice })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentRideId = null;
+                    activeRideDetails = null;
+                    resetDriverMapOverlays();
+                    logEvent('🏁 Ride Finished', data);
+                    showNotification('Success', `Ride completed! Final price: ${data.finalPrice} AZN`);
+                    
+                    document.getElementById('active-ride').innerHTML = `
+                        <div class="empty-state">
+                            <p>✅ Ride completed successfully!</p>
+                            <small>Waiting for new ride requests...</small>
+                        </div>
+                    `;
+                } else {
+                    showNotification('Error', data.message || 'Failed to finish ride', true);
+                }
+            } catch (error) {
+                logEvent('❌ Finish Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        async function cancelRideByDriver(rideId) {
+            try {
+                await loadDriverProfile();
+
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/cancel-by-driver`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ driverId: Number(driverId) })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    currentRideId = null;
+                    activeRideDetails = null;
+                    resetDriverMapOverlays();
+                    logEvent('🚫 Ride Cancelled By Driver', { rideId });
+                    showNotification('Ride Cancelled', 'Ride cancelled for passenger.', true);
+                    document.getElementById('active-ride').innerHTML = `
+                        <div class="empty-state">
+                            <p>Ride cancelled.</p>
+                            <small>Waiting for new ride requests...</small>
+                        </div>
+                    `;
+                } else {
+                    const errorMsg = data.error || data.message || `Failed to cancel ride (${response.status})`;
+                    showNotification('Error', errorMsg, true);
+                }
+            } catch (error) {
+                logEvent('❌ Cancel Error', { error: error.message });
+                showNotification('Error', 'Failed to cancel ride', true);
+            }
+        }
+
+        // Update status UI
+        function updateStatusUI() {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            const statusToggle = document.getElementById('status-toggle');
+
+            if (isOnline) {
+                statusDot.classList.add('online');
+                statusText.innerHTML = 'Online<br><small style="color: #666;">You are now receiving ride requests</small>';
+                statusToggle.textContent = 'Go Offline';
+                statusToggle.classList.remove('offline');
+            } else {
+                statusDot.classList.remove('online');
+                statusText.innerHTML = 'Offline<br><small style="color: #666;">You won\'t receive ride requests</small>';
+                statusToggle.textContent = 'Go Online';
+                statusToggle.classList.add('offline');
+            }
+        }
+
+        // Show notification
+        function showNotification(title, message, isError = false) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notif-title').textContent = title;
+            document.getElementById('notif-message').textContent = message;
+            notif.className = `notification show ${isError ? 'error' : ''}`;
+
+            setTimeout(() => {
+                notif.classList.remove('show');
+            }, 5000);
+        }
+
+        // Log event (falls back to console when log panel is hidden)
+        function logEvent(title, data) {
+            const log = document.getElementById('events-log');
+            const time = new Date().toLocaleTimeString();
+            const payload = JSON.stringify(data, null, 2);
+            if (log) {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `<strong>[${time}]</strong> ${title}<br><small>${payload}</small>`;
+                log.insertBefore(entry, log.firstChild);
+            } else {
+                console.log(`[${time}] ${title}`, data);
+            }
+        }
+
+        // Logout
+        function logout() {
+            stopGeolocationTracking();
+            if (isOnline) {
+                toggleOnlineStatus();
+            }
+            localStorage.clear();
+            window.location.href = '/index.html';
+        }
+
+        // Initialize
+        initDriverMap();
+        initSignalR();
+        startGeolocationTracking();
+    </script>
+</body>
+</html>

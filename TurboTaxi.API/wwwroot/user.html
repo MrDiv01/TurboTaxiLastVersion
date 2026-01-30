@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboTaxi - User Dashboard</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+        }
+
+        .btn-logout {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 22px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .readonly-input {
+            background: #f1f3f5;
+            color: #555;
+            cursor: not-allowed;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+            margin-right: 10px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .estimate-result {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .estimate-result h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .estimate-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .estimate-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-accepted {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .status-started {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-completed {
+            background: #6c757d;
+            color: white;
+        }
+
+        .status-cancelled {
+            background: #dc3545;
+            color: white;
+        }
+
+        .ride-details {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .ride-info {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .notification.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 5px;
+            margin: 5px 0;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+
+        .map-card {
+            grid-column: 1 / -1;
+        }
+
+        .map-card {
+            grid-column: 1 / -1;
+        }
+
+        .map-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .map-card-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .map-card-title h2 {
+            margin: 0;
+        }
+
+        .map-card-description {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .map-panel {
+            width: 100%;
+            height: clamp(260px, 45vh, 520px);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+            background: #e9ecef;
+        }
+
+        #user-map {
+            height: 100%;
+            width: 100%;
+        }
+
+        .driver-car-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        @media (max-width: 1024px) {
+            body {
+                padding: 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .btn-logout {
+                width: 100%;
+                text-align: center;
+            }
+
+            .container {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .map-panel {
+                height: 240px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 16px;
+            }
+
+            input {
+                font-size: 14px;
+            }
+
+            .btn,
+            .btn-logout {
+                width: 100%;
+            }
+
+            .ride-info {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            .notification {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+
+            .map-panel {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚕 TurboTaxi - User Dashboard</h1>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <!-- Request Ride Card -->
+        <div class="card">
+            <h2>📍 Request a Ride</h2>
+            
+            <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                Pickup coordinates are captured automatically from your current browser location.
+            </p>
+
+            <div class="form-group">
+                <label>Pickup Latitude</label>
+                <input type="text" id="pickup-lat" class="readonly-input" value="" placeholder="Waiting for GPS..." readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Pickup Longitude</label>
+                <input type="text" id="pickup-lng" class="readonly-input" value="" placeholder="Waiting for GPS..." readonly>
+            </div>
+
+            <div class="form-group">
+                <label>Dropoff Latitude</label>
+                <input type="number" step="0.000001" id="dropoff-lat" value="" placeholder="Enter destination latitude">
+            </div>
+
+            <div class="form-group">
+                <label>Dropoff Longitude</label>
+                <input type="number" step="0.000001" id="dropoff-lng" value="" placeholder="Enter destination longitude">
+            </div>
+
+            <button class="btn btn-primary" onclick="estimateRide()">💰 Get Price Estimate</button>
+
+            <div id="estimate-result" style="display: none;"></div>
+
+            <button class="btn btn-primary" onclick="requestRide()" style="margin-top: 15px;">🚕 Request Ride</button>
+        </div>
+
+        <!-- Current Ride Status Card -->
+        <div class="card">
+            <h2>🚗 Current Ride Status</h2>
+            <div id="ride-status">
+                <p style="text-align: center; color: #999; padding: 40px 0;">
+                    No active ride. Request a ride to get started!
+                </p>
+            </div>
+        </div>
+
+        <!-- User Map Card -->
+        <div class="card map-card">
+            <div class="map-card-header">
+                <div class="map-card-title">
+                    <span style="font-size: 26px;">🗺️</span>
+                    <div>
+                        <h2>Live Map</h2>
+                        <p class="map-card-description">Visualizes pickup, destination, and driver movement</p>
+                    </div>
+                </div>
+            </div>
+            <div class="map-panel">
+                <div id="user-map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Popup -->
+    <div id="notification" class="notification">
+        <h3 id="notif-title"></h3>
+        <p id="notif-message"></p>
+    </div>
+
+    <!-- SignalR & Map Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+    <script>
+        const API_BASE = window.location.origin.startsWith('file') ? 'https://localhost:7443' : window.location.origin;
+        let connection;
+        let currentRideId = null;
+        let estimateData = null;
+        let pickupGeoWatchId = null;
+        const PICKUP_LOG_INTERVAL = 5000;
+        let lastPickupLogTime = 0;
+        const ROUTING_API_URL = 'https://router.project-osrm.org/route/v1/driving';
+
+        let userMap;
+        let userMapInitialized = false;
+        let userPickupMarker;
+        let userDestinationMarker;
+        let pickupToDestinationLine;
+        let driverMarkerOnUser;
+        let driverToPassengerLine;
+        let driverToDestinationLine;
+        let userPickupCoords = null;
+        let userDestinationCoords = null;
+        let latestDriverLocation = null;
+        let currentRideStatusKey = null;
+        let pickupDestinationRouteToken = 0;
+        let driverPickupRouteToken = 0;
+        let driverDestinationRouteToken = 0;
+
+        const driverCarIcon = typeof L !== 'undefined'
+            ? L.divIcon({
+                className: 'driver-car-icon',
+                html: '\uD83D\uDE98',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            })
+            : null;
+
+        const rideStatusMap = {
+            pending: 'Pending',
+            approved: 'Approved',
+            arrived: 'Arrived',
+            onway: 'OnWay',
+            canceled: 'Canceled',
+            completed: 'Completed',
+            '0': 'Pending',
+            '1': 'Approved',
+            '2': 'Arrived',
+            '3': 'OnWay',
+            '4': 'Canceled',
+            '5': 'Completed'
+        };
+
+        function getStatusInfo(value) {
+            if (value === null || value === undefined) {
+                return { key: 'pending', label: 'Pending' };
+            }
+
+            const str = value.toString().trim();
+            if (rideStatusMap.hasOwnProperty(str)) {
+                const label = rideStatusMap[str];
+                return { key: label.toLowerCase(), label };
+            }
+
+            const lower = str.toLowerCase();
+            if (rideStatusMap.hasOwnProperty(lower)) {
+                const label = rideStatusMap[lower];
+                return { key: lower, label };
+            }
+
+            return { key: lower || 'pending', label: str || 'Pending' };
+        }
+
+        // Check authentication
+        const token = localStorage.getItem('accessToken');
+        const userId = localStorage.getItem('userId');
+        if (!token) {
+            window.location.href = '/index.html';
+        }
+
+        // Initialize SignalR
+        async function initSignalR() {
+            connection = new signalR.HubConnectionBuilder()
+                .withUrl(`${API_BASE}/hubs/user`, {
+                    accessTokenFactory: () => token
+                })
+                .withAutomaticReconnect()
+                .build();
+
+            // Handle ride accepted
+            connection.on("RideAccepted", (data) => {
+                logEvent('✅ Ride Accepted!', data);
+                showNotification('Driver Found!', `Driver ${data.driverName} accepted your ride`);
+                currentRideId = data.rideId || currentRideId;
+                if (data?.status) {
+                    currentRideStatusKey = data.status.toString().toLowerCase();
+                }
+                const updated = tryUpdateLatestDriverLocation(data);
+                updatePickupDestinationLine();
+                updateDriverLinesForUser();
+                if (!updated) {
+                    logEvent('ℹ️ Awaiting driver location after accept', {});
+                }
+                updateRideStatus(data.rideId);
+            });
+
+            // Handle ride started
+            connection.on("RideStarted", (data) => {
+                logEvent('🚗 Ride Started!', data);
+                showNotification('Ride Started', 'Your ride has started');
+                currentRideId = data.rideId || currentRideId;
+                if (data?.status) {
+                    currentRideStatusKey = data.status.toString().toLowerCase();
+                }
+                const updated = tryUpdateLatestDriverLocation(data);
+                updatePickupDestinationLine();
+                updateDriverLinesForUser();
+                if (!updated) {
+                    logEvent('ℹ️ Awaiting driver location after start', {});
+                }
+                updateRideStatus(data.rideId);
+            });
+
+            // Handle ride completed
+            connection.on("RideCompleted", (data) => {
+                logEvent('🎉 Ride Completed!', data);
+                showNotification('Ride Completed', `Total fare: ${data.finalPrice} AZN`);
+                currentRideId = null;
+                currentRideStatusKey = null;
+                latestDriverLocation = null;
+                document.getElementById('ride-status').innerHTML = `
+                    <p style="text-align: center; color: #28a745; padding: 40px 0;">
+                        ✅ Ride completed successfully!<br>
+                        <small>Request a new ride to continue</small>
+                    </p>
+                `;
+                resetUserMapRoutes(true);
+                clearDropoffInputs();
+            });
+
+            // Handle driver location updates
+            connection.on("DriverLocationUpdated", (...args) => {
+                let payload;
+                if (args.length === 1 && typeof args[0] === 'object' && args[0] !== null) {
+                    payload = args[0];
+                } else if (args.length >= 3) {
+                    payload = {
+                        driverId: args[0],
+                        lat: args[1],
+                        lng: args[2],
+                        rideId: args[3]
+                    };
+                } else {
+                    logEvent('⚠️ Invalid Driver Location Event', { args });
+                    return;
+                }
+
+                logEvent('📍 Driver Location Updated', payload);
+
+                const hasActiveRide = currentRideId !== null && currentRideId !== undefined;
+                const activeRideId = hasActiveRide ? Number(currentRideId) : NaN;
+                if (!hasActiveRide || Number.isNaN(activeRideId)) {
+                    return;
+                }
+
+                const eventRideId = Number(
+                    payload.rideId ?? payload.RideId ?? payload.rideID ?? payload.RideID ?? activeRideId
+                );
+                if (Number.isNaN(eventRideId) || eventRideId !== activeRideId) {
+                    return;
+                }
+
+                const latRaw = payload.lat ?? payload.Lat ?? payload.latitude ?? payload.Latitude;
+                const lngRaw = payload.lng ?? payload.Lng ?? payload.longitude ?? payload.Longitude;
+                const lat = typeof latRaw === 'number' ? latRaw : parseFloat(latRaw);
+                const lng = typeof lngRaw === 'number' ? lngRaw : parseFloat(lngRaw);
+                if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+                    latestDriverLocation = [lat, lng];
+                    updateDriverLinesForUser();
+                }
+            });
+
+            connection.on("RideStatusUpdated", (rideId, status, payload) => {
+                logEvent('ℹ️ Ride Status Updated', { rideId, status, payload });
+                const message = payload?.message || `Ride status changed to ${status}`;
+                showNotification('Ride Update', message);
+                currentRideId = rideId || currentRideId;
+                if (status) {
+                    currentRideStatusKey = status.toString().toLowerCase();
+                }
+                const updated = tryUpdateLatestDriverLocation(payload);
+                updatePickupDestinationLine();
+                updateDriverLinesForUser();
+                if (!updated) {
+                    logEvent('ℹ️ Ride status update without driver coordinates', {});
+                }
+                if (rideId) {
+                    updateRideStatus(rideId);
+                }
+            });
+
+            try {
+                await connection.start();
+                logEvent('✅ Connected to SignalR Hub', { status: 'Connected' });
+
+                // Subscribe to user group
+                if (userId) {
+                    await connection.invoke("SubscribeUser", userId.toString());
+                    logEvent('✅ Subscribed to User Group', { userId });
+                }
+            } catch (err) {
+                logEvent('❌ SignalR Connection Failed', { error: err.message });
+            }
+        }
+
+        // Estimate ride
+        async function estimateRide() {
+            const pickupLat = parseFloat(document.getElementById('pickup-lat').value);
+            const pickupLng = parseFloat(document.getElementById('pickup-lng').value);
+            const dropoffLat = parseFloat(document.getElementById('dropoff-lat').value);
+            const dropoffLng = parseFloat(document.getElementById('dropoff-lng').value);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/rides/estimate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ pickupLat, pickupLng, dropoffLat, dropoffLng })
+                });
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : {};
+                estimateData = data;
+
+                if (response.ok && data.success) {
+                    document.getElementById('estimate-result').innerHTML = `
+                        <div class="estimate-result">
+                            <h3>💰 Price Estimate</h3>
+                            <div class="estimate-item">
+                                <span>City:</span>
+                                <strong>${data.detectedCity || 'Unknown'}</strong>
+                            </div>
+                            <div class="estimate-item">
+                                <span>Distance:</span>
+                                <strong>${data.distanceKm.toFixed(2)} km</strong>
+                            </div>
+                            <div class="estimate-item">
+                                <span>Duration:</span>
+                                <strong>${data.durationMin.toFixed(1)} min</strong>
+                            </div>
+                            <div class="estimate-item">
+                                <span>Base Fare:</span>
+                                <strong>${data.tariff.baseFare} AZN</strong>
+                            </div>
+                            <div class="estimate-item">
+                                <span>Estimated Price:</span>
+                                <strong style="color: #667eea; font-size: 20px;">${data.finalPrice} AZN</strong>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById('estimate-result').style.display = 'block';
+                    logEvent('💰 Price Estimated', data);
+                } else {
+                    const errorMsg = data.error || data.message || `Failed to estimate ride (${response.status})`;
+                    showNotification('Error', errorMsg, true);
+                }
+            } catch (error) {
+                logEvent('❌ Estimate Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        // Request ride
+        async function requestRide() {
+            if (!estimateData) {
+                showNotification('Error', 'Please get a price estimate first', true);
+                return;
+            }
+
+            const pickupLat = parseFloat(document.getElementById('pickup-lat').value);
+            const pickupLng = parseFloat(document.getElementById('pickup-lng').value);
+            const dropoffLat = parseFloat(document.getElementById('dropoff-lat').value);
+            const dropoffLng = parseFloat(document.getElementById('dropoff-lng').value);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/rides`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ 
+                        pickupLat, 
+                        pickupLng, 
+                        destinationLat: dropoffLat, 
+                        destinationLng: dropoffLng 
+                    })
+                });
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : {};
+
+                if (response.ok && data.success) {
+                    currentRideId = data.rideId;
+                    currentRideStatusKey = 'pending';
+                    logEvent('🚕 Ride Requested', data);
+                    showNotification('Success', 'Ride requested! Waiting for driver...');
+                    updateRideStatus(data.rideId);
+                } else {
+                    showNotification('Error', data.message || `Failed to request ride (${response.status})`, true);
+                }
+            } catch (error) {
+                logEvent('❌ Request Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        // Update ride status
+        async function updateRideStatus(rideId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : {};
+
+                if (response.ok && data) {
+                    currentRideId = data.id;
+                    const statusInfo = getStatusInfo(data.status);
+                    const statusStr = statusInfo.label;
+                    const normalizedStatus = statusInfo.key;
+                    currentRideStatusKey = normalizedStatus;
+                    const statusClass = `status-${normalizedStatus}`;
+                    let driverInfo = '';
+                    const cancellableStatuses = ['pending','approved','arrived','onway'];
+                    const canCancel = cancellableStatuses.includes(normalizedStatus);
+                    
+                    if (data.driver) {
+                        driverInfo = `
+                            <div style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                                <h4 style="margin-bottom: 10px;">👤 Driver Information</h4>
+                                <div class="ride-info">
+                                    <span>Name:</span>
+                                    <strong>${data.driver.name}</strong>
+                                </div>
+                                <div class="ride-info">
+                                    <span>Phone:</span>
+                                    <strong>${data.driver.phone || 'N/A'}</strong>
+                                </div>
+                                <div class="ride-info">
+                                    <span>Vehicle:</span>
+                                    <strong>${data.driver.vehicle.brand} ${data.driver.vehicle.model}</strong>
+                                </div>
+                                <div class="ride-info">
+                                    <span>Plate:</span>
+                                    <strong>${data.driver.vehicle.plateNumber}</strong>
+                                </div>
+                                <div class="ride-info">
+                                    <span>Color:</span>
+                                    <strong>${data.driver.vehicle.color}</strong>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    document.getElementById('ride-status').innerHTML = `
+                        <div class="ride-details">
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <span class="status-badge ${statusClass}">${data.status}</span>
+                            </div>
+                            <div class="ride-info">
+                                <span>Ride ID:</span>
+                                <strong>#${data.id}</strong>
+                            </div>
+                            <div class="ride-info">
+                                <span>Pickup:</span>
+                                <strong>${data.pickup.address || 'Loading...'}</strong>
+                            </div>
+                            <div class="ride-info">
+                                <span>Dropoff:</span>
+                                <strong>${data.dropoff.address || 'Loading...'}</strong>
+                            </div>
+                            <div class="ride-info">
+                                <span>Estimated Price:</span>
+                                <strong>${data.estimatedPrice} AZN</strong>
+                            </div>
+                            <div class="ride-info">
+                                <span>Driver Status:</span>
+                                <strong>${statusStr}</strong>
+                            </div>
+                            ${data.finalPrice ? `
+                                <div class="ride-info">
+                                    <span>Final Price:</span>
+                                    <strong style="color: #28a745;">${data.finalPrice} AZN</strong>
+                                </div>
+                            ` : ''}
+                            ${driverInfo}
+                            ${canCancel ? `
+                                <button class="btn btn-danger" style="width: 100%; margin-top: 15px;" onclick="cancelActiveRide(${data.id})">
+                                    ❌ Cancel Ride
+                                </button>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    syncUserMapWithRide(data);
+                    updateDriverLinesForUser();
+                }
+            } catch (error) {
+                logEvent('❌ Status Update Error', { error: error.message });
+            }
+        }
+
+        async function cancelActiveRide(rideId) {
+            if (!rideId || !userId) {
+                showNotification('Error', 'No active ride to cancel', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/rides/${rideId}/cancel-by-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ userId: Number(userId) })
+                });
+
+                const text = await response.text();
+                const data = text ? JSON.parse(text) : {};
+
+                if (response.ok && data.success) {
+                    currentRideId = null;
+                    currentRideStatusKey = null;
+                    latestDriverLocation = null;
+                    showNotification('Ride Cancelled', 'Your ride has been cancelled.', true);
+                    logEvent('❌ Ride Cancelled By User', { rideId });
+                    document.getElementById('ride-status').innerHTML = `
+                        <p style="text-align: center; color: #999; padding: 40px 0;">
+                            Ride cancelled. Request a new ride when ready.
+                        </p>
+                    `;
+                    resetUserMapRoutes(true);
+                } else {
+                    const errorMsg = data.error || data.message || `Failed to cancel ride (${response.status})`;
+                    showNotification('Error', errorMsg, true);
+                }
+            } catch (error) {
+                logEvent('❌ Cancel Ride Error', { error: error.message });
+                showNotification('Error', 'Network error. Please try again.', true);
+            }
+        }
+
+        // Show notification
+        function showNotification(title, message, isError = false) {
+            const notif = document.getElementById('notification');
+            document.getElementById('notif-title').textContent = title;
+            document.getElementById('notif-message').textContent = message;
+            notif.className = `notification show ${isError ? 'error' : ''}`;
+
+            setTimeout(() => {
+                notif.classList.remove('show');
+            }, 5000);
+        }
+
+        // Log event (falls back to console if log panel is hidden)
+        function logEvent(title, data) {
+            const log = document.getElementById('events-log');
+            const time = new Date().toLocaleTimeString();
+            const payload = JSON.stringify(data, null, 2);
+            if (log) {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+                entry.innerHTML = `<strong>[${time}]</strong> ${title}<br><small>${payload}</small>`;
+                log.insertBefore(entry, log.firstChild);
+            } else {
+                console.log(`[${time}] ${title}`, data);
+            }
+        }
+
+        // Logout
+        function logout() {
+            stopPickupGeolocation();
+            localStorage.clear();
+            window.location.href = '/index.html';
+        }
+
+        // Initialize
+        initUserMap();
+        (function seedInitialMapState() {
+            const initialPickupLat = parseFloat(document.getElementById('pickup-lat').value);
+            const initialPickupLng = parseFloat(document.getElementById('pickup-lng').value);
+            if (!Number.isNaN(initialPickupLat) && !Number.isNaN(initialPickupLng)) {
+                setPickupCoords([initialPickupLat, initialPickupLng]);
+            }
+            handleDestinationChange();
+        })();
+        initSignalR();
+        startPickupGeolocation();
+        ['dropoff-lat', 'dropoff-lng'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('input', handleDestinationChange);
+            }
+        });
+
+        function startPickupGeolocation() {
+            if (pickupGeoWatchId !== null) {
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                logEvent('⚠️ Geolocation Unsupported', {});
+                showNotification('Location Error', 'Browser does not support geolocation API.', true);
+                return;
+            }
+
+            const latInput = document.getElementById('pickup-lat');
+            const lngInput = document.getElementById('pickup-lng');
+
+            pickupGeoWatchId = navigator.geolocation.watchPosition(position => {
+                const { latitude, longitude, accuracy } = position.coords;
+                latInput.value = latitude.toFixed(6);
+                lngInput.value = longitude.toFixed(6);
+                setPickupCoords([latitude, longitude]);
+
+                const now = Date.now();
+                if (now - lastPickupLogTime >= PICKUP_LOG_INTERVAL) {
+                    lastPickupLogTime = now;
+                    logEvent('\uD83D\uDCCD Pickup Location Updated', { latitude, longitude, accuracy });
+                }
+            }, error => {
+                logEvent('⚠️ Pickup Geolocation Error', { code: error.code, message: error.message });
+                if (error.code === error.PERMISSION_DENIED) {
+                    showNotification('Location Permission Needed', 'Please allow location access to auto-fill pickup location.', true);
+                }
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 5000,
+                timeout: 10000
+            });
+
+            logEvent('✅ Pickup Geolocation Tracking Started', {});
+        }
+
+        function stopPickupGeolocation() {
+            if (pickupGeoWatchId !== null && navigator.geolocation) {
+                navigator.geolocation.clearWatch(pickupGeoWatchId);
+                pickupGeoWatchId = null;
+            }
+        }
+
+        function initUserMap() {
+            if (userMapInitialized || typeof L === 'undefined') {
+                return;
+            }
+            const lat = parseFloat(document.getElementById('pickup-lat').value) || 40.4093;
+            const lng = parseFloat(document.getElementById('pickup-lng').value) || 49.8671;
+            userMap = L.map('user-map').setView([lat, lng], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: 'OpenStreetMap contributors'
+            }).addTo(userMap);
+            userMapInitialized = true;
+        }
+
+        function setPickupCoords(coords) {
+            userPickupCoords = coords;
+            if (!userMapInitialized) {
+                initUserMap();
+            }
+            if (!userMapInitialized) {
+                return;
+            }
+
+            if (coords) {
+                if (!userPickupMarker) {
+                    userPickupMarker = L.marker(coords, { title: 'Pickup' }).addTo(userMap);
+                } else {
+                    userPickupMarker.setLatLng(coords);
+                }
+            } else if (userPickupMarker) {
+                userMap.removeLayer(userPickupMarker);
+                userPickupMarker = null;
+            }
+
+            updatePickupDestinationLine();
+            updateDriverLinesForUser();
+        }
+
+        function handleDestinationChange() {
+            const latVal = parseFloat(document.getElementById('dropoff-lat').value);
+            const lngVal = parseFloat(document.getElementById('dropoff-lng').value);
+            if (!Number.isNaN(latVal) && !Number.isNaN(lngVal)) {
+                setDestinationCoords([latVal, lngVal]);
+            } else {
+                setDestinationCoords(null);
+            }
+        }
+
+        function setDestinationCoords(coords) {
+            userDestinationCoords = coords;
+            if (!userMapInitialized) {
+                initUserMap();
+            }
+            if (!userMapInitialized) {
+                return;
+            }
+
+            if (coords) {
+                if (!userDestinationMarker) {
+                    userDestinationMarker = L.marker(coords, { title: 'Destination' }).addTo(userMap);
+                } else {
+                    userDestinationMarker.setLatLng(coords);
+                }
+            } else if (userDestinationMarker) {
+                userMap.removeLayer(userDestinationMarker);
+                userDestinationMarker = null;
+            }
+
+            updatePickupDestinationLine();
+            updateDriverLinesForUser();
+        }
+
+        async function updatePickupDestinationLine() {
+            if (!userMapInitialized) {
+                initUserMap();
+            }
+            if (!userMapInitialized) {
+                return;
+            }
+
+            const suppressPickupRoute = ['approved', 'arrived', 'onway'].includes(currentRideStatusKey);
+            if (suppressPickupRoute) {
+                pickupDestinationRouteToken++;
+                if (pickupToDestinationLine) {
+                    userMap.removeLayer(pickupToDestinationLine);
+                    pickupToDestinationLine = null;
+                }
+                return;
+            }
+
+            if (userPickupCoords && userDestinationCoords) {
+                const token = ++pickupDestinationRouteToken;
+                try {
+                    const latLngs = await fetchRouteLatLngs(userPickupCoords, userDestinationCoords);
+                    if (token !== pickupDestinationRouteToken) {
+                        return;
+                    }
+                    if (!pickupToDestinationLine) {
+                        pickupToDestinationLine = L.polyline(latLngs, { color: '#667eea', weight: 4 }).addTo(userMap);
+                    } else {
+                        pickupToDestinationLine.setLatLngs(latLngs);
+                    }
+                    const bounds = L.latLngBounds(latLngs);
+                    userMap.fitBounds(bounds.pad(0.2));
+                } catch (error) {
+                    logEvent('⚠️ Route Fetch Failed (pickup→destination)', { error: error.message });
+                    const fallback = [userPickupCoords, userDestinationCoords];
+                    if (!pickupToDestinationLine) {
+                        pickupToDestinationLine = L.polyline(fallback, { color: '#667eea', weight: 4 }).addTo(userMap);
+                    } else {
+                        pickupToDestinationLine.setLatLngs(fallback);
+                    }
+                }
+            } else {
+                pickupDestinationRouteToken++;
+                if (pickupToDestinationLine) {
+                    userMap.removeLayer(pickupToDestinationLine);
+                    pickupToDestinationLine = null;
+                }
+            }
+        }
+
+        function updateDriverLinesForUser() {
+            if (!userMapInitialized) {
+                initUserMap();
+            }
+            if (!userMapInitialized) {
+                return;
+            }
+
+            if (!latestDriverLocation) {
+                if (driverMarkerOnUser) {
+                    userMap.removeLayer(driverMarkerOnUser);
+                    driverMarkerOnUser = null;
+                }
+                clearDriverPickupLine();
+                clearDriverDestinationLine();
+                return;
+            }
+
+            if (driverMarkerOnUser) {
+                userMap.removeLayer(driverMarkerOnUser);
+            }
+            const driverMarkerOptions = { title: 'Driver' };
+            if (driverCarIcon) {
+                driverMarkerOptions.icon = driverCarIcon;
+            }
+            driverMarkerOnUser = L.marker(latestDriverLocation, driverMarkerOptions).addTo(userMap);
+
+            const headingPickup = ['approved', 'arrived'];
+            if (headingPickup.includes(currentRideStatusKey) && userPickupCoords) {
+                updateDriverPickupRoute();
+            } else {
+                clearDriverPickupLine();
+            }
+
+            if (currentRideStatusKey === 'onway' && userDestinationCoords) {
+                updateDriverDestinationRoute();
+            } else {
+                clearDriverDestinationLine();
+            }
+        }
+
+        function clearDriverPickupLine() {
+            driverPickupRouteToken++;
+            if (driverToPassengerLine && userMapInitialized) {
+                userMap.removeLayer(driverToPassengerLine);
+                driverToPassengerLine = null;
+            } else if (!userMapInitialized) {
+                driverToPassengerLine = null;
+            }
+        }
+
+        function clearDriverDestinationLine() {
+            driverDestinationRouteToken++;
+            if (driverToDestinationLine && userMapInitialized) {
+                userMap.removeLayer(driverToDestinationLine);
+                driverToDestinationLine = null;
+            } else if (!userMapInitialized) {
+                driverToDestinationLine = null;
+            }
+        }
+
+        async function updateDriverPickupRoute() {
+            if (!latestDriverLocation || !userPickupCoords) {
+                clearDriverPickupLine();
+                return;
+            }
+
+            const token = ++driverPickupRouteToken;
+            try {
+                const latLngs = await fetchRouteLatLngs(latestDriverLocation, userPickupCoords);
+                if (token !== driverPickupRouteToken) {
+                    return;
+                }
+                if (!driverToPassengerLine) {
+                    driverToPassengerLine = L.polyline(latLngs, { color: '#17a2b8', weight: 4, dashArray: '6 6' }).addTo(userMap);
+                } else {
+                    driverToPassengerLine.setLatLngs(latLngs);
+                }
+            } catch (error) {
+                logEvent('⚠️ Route Fetch Failed (driver→pickup)', { error: error.message });
+                const fallback = [latestDriverLocation, userPickupCoords];
+                if (!driverToPassengerLine) {
+                    driverToPassengerLine = L.polyline(fallback, { color: '#17a2b8', weight: 4, dashArray: '6 6' }).addTo(userMap);
+                } else {
+                    driverToPassengerLine.setLatLngs(fallback);
+                }
+            }
+        }
+
+        async function updateDriverDestinationRoute() {
+            if (!latestDriverLocation || !userDestinationCoords) {
+                clearDriverDestinationLine();
+                return;
+            }
+
+            const token = ++driverDestinationRouteToken;
+            try {
+                const latLngs = await fetchRouteLatLngs(latestDriverLocation, userDestinationCoords);
+                if (token !== driverDestinationRouteToken) {
+                    return;
+                }
+                if (!driverToDestinationLine) {
+                    driverToDestinationLine = L.polyline(latLngs, { color: '#ff6b6b', weight: 4, dashArray: '4 8' }).addTo(userMap);
+                } else {
+                    driverToDestinationLine.setLatLngs(latLngs);
+                }
+            } catch (error) {
+                logEvent('⚠️ Route Fetch Failed (driver→destination)', { error: error.message });
+                const fallback = [latestDriverLocation, userDestinationCoords];
+                if (!driverToDestinationLine) {
+                    driverToDestinationLine = L.polyline(fallback, { color: '#ff6b6b', weight: 4, dashArray: '4 8' }).addTo(userMap);
+                } else {
+                    driverToDestinationLine.setLatLngs(fallback);
+                }
+            }
+        }
+
+        async function fetchRouteLatLngs(fromCoords, toCoords) {
+            if (!fromCoords || !toCoords) {
+                throw new Error('Missing coordinates for routing');
+            }
+
+            const url = `${ROUTING_API_URL}/${fromCoords[1]},${fromCoords[0]};${toCoords[1]},${toCoords[0]}?overview=full&geometries=geojson`;
+            const response = await fetch(url);
+            const dataText = await response.text();
+            const data = dataText ? JSON.parse(dataText) : null;
+
+            if (!response.ok || !data?.routes?.length) {
+                throw new Error(`Routing API error ${response.status}`);
+            }
+
+            return data.routes[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+        }
+
+        function getLatLngFromLocation(location) {
+            if (!location) {
+                return null;
+            }
+            let lat = location.lat ?? location.Lat;
+            let lng = location.lng ?? location.Lng;
+            lat = typeof lat === 'number' ? lat : parseFloat(lat);
+            lng = typeof lng === 'number' ? lng : parseFloat(lng);
+            if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+                return [lat, lng];
+            }
+            return null;
+        }
+
+        function tryUpdateLatestDriverLocation(source) {
+            if (!source) {
+                return false;
+            }
+
+            const latRaw = source.driverLat ?? source.DriverLat ?? source.driverLatitude ?? source.DriverLatitude;
+            const lngRaw = source.driverLng ?? source.DriverLng ?? source.driverLongitude ?? source.DriverLongitude;
+            const lat = typeof latRaw === 'number' ? latRaw : parseFloat(latRaw);
+            const lng = typeof lngRaw === 'number' ? lngRaw : parseFloat(lngRaw);
+
+            if (typeof lat === 'number' && typeof lng === 'number' && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+                latestDriverLocation = [lat, lng];
+                return true;
+            }
+
+            return false;
+        }
+
+        function syncUserMapWithRide(ride) {
+            if (!ride) {
+                return;
+            }
+            const pickup = getLatLngFromLocation(ride.pickup);
+            if (pickup) {
+                setPickupCoords(pickup);
+            }
+            const dropoff = getLatLngFromLocation(ride.dropoff);
+            if (dropoff) {
+                setDestinationCoords(dropoff);
+            }
+        }
+
+        function resetUserMapRoutes(resetDestination = false) {
+            driverPickupRouteToken++;
+            driverDestinationRouteToken++;
+            if (!userMapInitialized) {
+                driverMarkerOnUser = null;
+                driverToPassengerLine = null;
+                driverToDestinationLine = null;
+                latestDriverLocation = null;
+                if (resetDestination) {
+                    pickupDestinationRouteToken++;
+                    userDestinationCoords = null;
+                }
+                return;
+            }
+            if (driverMarkerOnUser) {
+                userMap.removeLayer(driverMarkerOnUser);
+                driverMarkerOnUser = null;
+            }
+            if (driverToPassengerLine) {
+                userMap.removeLayer(driverToPassengerLine);
+                driverToPassengerLine = null;
+            }
+            if (driverToDestinationLine) {
+                userMap.removeLayer(driverToDestinationLine);
+                driverToDestinationLine = null;
+            }
+            latestDriverLocation = null;
+            if (resetDestination) {
+                pickupDestinationRouteToken++;
+                setDestinationCoords(null);
+                if (pickupToDestinationLine) {
+                    userMap.removeLayer(pickupToDestinationLine);
+                    pickupToDestinationLine = null;
+                }
+            } else {
+                updatePickupDestinationLine();
+            }
+        }
+
+        function clearDropoffInputs() {
+            const dropLat = document.getElementById('dropoff-lat');
+            const dropLng = document.getElementById('dropoff-lng');
+            dropLat.value = '';
+            dropLng.value = '';
+            setDestinationCoords(null);
+        }
+    </script>
+</body>
+</html>

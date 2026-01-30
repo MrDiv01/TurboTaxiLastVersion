@@ -24,6 +24,7 @@ namespace TurboTaxi.Infrastructure.Data
         public DbSet<UserFavoriteLocation> UserFavoriteLocations => Set<UserFavoriteLocation>();
         public DbSet<Rating> Ratings => Set<Rating>();
         public DbSet<Tariff> Tariffs => Set<Tariff>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -111,6 +112,39 @@ namespace TurboTaxi.Infrastructure.Data
                 entity.Property(x => x.PricePerKm).HasColumnType("decimal(18,2)");
                 entity.Property(x => x.PricePerMinute).HasColumnType("decimal(18,2)");
                 entity.Property(x => x.MinimumFare).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.CancellationFee).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.FreeKm).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.NightMultiplier).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.WaitingPricePerMinute).HasColumnType("decimal(18,2)");
+
+                entity.HasIndex(x => new { x.CityKey, x.CountryCode }).IsUnique();
+
+                var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+                // Seed Russian city tariffs
+                entity.HasData(
+                    new Tariff { Id = 1, CountryCode = "RU", CityKey = "moscow", DisplayCityName = "Москва", BaseFare = 180, PricePerKm = 28, PricePerMinute = 9, MinimumFare = 350, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 2, CountryCode = "RU", CityKey = "saint_petersburg", DisplayCityName = "Санкт-Петербург", BaseFare = 160, PricePerKm = 25, PricePerMinute = 8, MinimumFare = 320, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 3, CountryCode = "RU", CityKey = "yekaterinburg", DisplayCityName = "Екатеринбург", BaseFare = 130, PricePerKm = 22, PricePerMinute = 7, MinimumFare = 280, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 4, CountryCode = "RU", CityKey = "novosibirsk", DisplayCityName = "Новосибирск", BaseFare = 130, PricePerKm = 22, PricePerMinute = 7, MinimumFare = 280, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 5, CountryCode = "RU", CityKey = "kazan", DisplayCityName = "Казань", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 6, CountryCode = "RU", CityKey = "krasnoyarsk", DisplayCityName = "Красноярск", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 7, CountryCode = "RU", CityKey = "nizhny_novgorod", DisplayCityName = "Нижний Новгород", BaseFare = 125, PricePerKm = 21, PricePerMinute = 6, MinimumFare = 270, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 8, CountryCode = "RU", CityKey = "chelyabinsk", DisplayCityName = "Челябинск", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 9, CountryCode = "RU", CityKey = "ufa", DisplayCityName = "Уфа", BaseFare = 115, PricePerKm = 19, PricePerMinute = 6, MinimumFare = 250, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 10, CountryCode = "RU", CityKey = "samara", DisplayCityName = "Самара", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 11, CountryCode = "RU", CityKey = "rostov_on_don", DisplayCityName = "Ростов-на-Дону", BaseFare = 125, PricePerKm = 21, PricePerMinute = 6, MinimumFare = 270, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 12, CountryCode = "RU", CityKey = "krasnodar", DisplayCityName = "Краснодар", BaseFare = 130, PricePerKm = 22, PricePerMinute = 7, MinimumFare = 280, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 13, CountryCode = "RU", CityKey = "omsk", DisplayCityName = "Омск", BaseFare = 115, PricePerKm = 19, PricePerMinute = 6, MinimumFare = 250, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 14, CountryCode = "RU", CityKey = "voronezh", DisplayCityName = "Воронеж", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 15, CountryCode = "RU", CityKey = "perm", DisplayCityName = "Пермь", BaseFare = 125, PricePerKm = 21, PricePerMinute = 6, MinimumFare = 270, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 16, CountryCode = "RU", CityKey = "volgograd", DisplayCityName = "Волгоград", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 17, CountryCode = "RU", CityKey = "tyumen", DisplayCityName = "Тюмень", BaseFare = 130, PricePerKm = 22, PricePerMinute = 7, MinimumFare = 280, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 18, CountryCode = "RU", CityKey = "saratov", DisplayCityName = "Саратов", BaseFare = 115, PricePerKm = 19, PricePerMinute = 6, MinimumFare = 250, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 19, CountryCode = "RU", CityKey = "dagestan_avg", DisplayCityName = "Дагестан (orta)", BaseFare = 110, PricePerKm = 18, PricePerMinute = 5, MinimumFare = 230, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 20, CountryCode = "RU", CityKey = "norilsk", DisplayCityName = "Норильск", BaseFare = 200, PricePerKm = 35, PricePerMinute = 12, MinimumFare = 400, IsActive = true, CreatedTime = seedDate },
+                    new Tariff { Id = 21, CountryCode = "RU", CityKey = "default_ru", DisplayCityName = "Russia Default", BaseFare = 120, PricePerKm = 20, PricePerMinute = 6, MinimumFare = 260, IsActive = true, CreatedTime = seedDate }
+                );
             });
 
             modelBuilder.Entity<Payment>(entity =>
