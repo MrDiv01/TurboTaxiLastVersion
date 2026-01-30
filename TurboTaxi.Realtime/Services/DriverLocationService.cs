@@ -34,35 +34,74 @@ namespace TurboTaxi.Realtime.Services
         public async Task UpdateAsync(DriverLocationUpdateRequest request, CancellationToken ct = default)
         {
             var updatedAt = DateTime.UtcNow;
-            _logger.LogInformation($"?? Driver #{request.DriverId} location update: ({request.Latitude}, {request.Longitude})");
+            _logger.LogInformation($"📍 Driver #{request.DriverId} location update: ({request.Latitude}, {request.Longitude})");
 
-            // Update Redis with driver location
-            var hashKey = RedisKeys.DriverHash(request.DriverId);
-            var entries = new HashEntry[]
+            // Retry logic for Redis operations (max 3 attempts with exponential backoff)
+            var maxRetries = 3;
+            var retryDelayMs = 100;
+
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-                new("lat", request.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                new("lng", request.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                new("status", request.DriverStatus ?? "Free"),
-                new("vehicleType", request.VehicleType ?? "Standard"),
-                new("updatedAt", updatedAt.ToString("o"))
-            };
-            await _redis.HashSetAsync(hashKey, entries);
+                try
+                {
+                    // Update Redis with driver location
+                    var hashKey = RedisKeys.DriverHash(request.DriverId);
+                    var entries = new HashEntry[]
+                    {
+                        new("lat", request.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        new("lng", request.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                        new("status", request.DriverStatus ?? "Free"),
+                        new("vehicleType", request.VehicleType ?? "Standard"),
+                        new("updatedAt", updatedAt.ToString("o"))
+                    };
+                    await _redis.HashSetAsync(hashKey, entries);
 
-            // Update geo-spatial index
-            var vt = (request.VehicleType ?? "Standard").ToLowerInvariant();
-            var geoKey = $"geo:drivers:{vt}";
-            await _redis.GeoAddAsync(geoKey, request.Longitude, request.Latitude, member: request.DriverId.ToString());
+                    // Update geo-spatial index
+                    var vt = (request.VehicleType ?? "Standard").ToLowerInvariant();
+                    var geoKey = $"geo:drivers:{vt}";
+                    await _redis.GeoAddAsync(geoKey, request.Longitude, request.Latitude, member: request.DriverId.ToString());
 
-            // Update heartbeat
-            var heartbeatKey = RedisKeys.DriverHeartbeat(request.DriverId);
-            await _redis.SetStringIfNotExistsAsync(heartbeatKey, "1", TimeSpan.FromSeconds(10));
-            await _redis.SetExpiryAsync(heartbeatKey, TimeSpan.FromSeconds(10));
+                    // Update heartbeat
+                    var heartbeatKey = RedisKeys.DriverHeartbeat(request.DriverId);
+                    await _redis.SetStringIfNotExistsAsync(heartbeatKey, "1", TimeSpan.FromSeconds(10));
+                    await _redis.SetExpiryAsync(heartbeatKey, TimeSpan.FromSeconds(10));
 
-            // ?? BROADCAST DRIVER LOCATION TO DRIVER GROUP
+                    // Success - break retry loop
+                    if (attempt > 1)
+                    {
+                        _logger.LogInformation($"✅ Redis update succeeded on attempt #{attempt} for driver #{request.DriverId}");
+                    }
+                    break;
+                }
+                catch (TimeoutException tex)
+                {
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError(tex, $"❌ Redis TIMEOUT after {maxRetries} attempts for driver #{request.DriverId}");
+                        throw; // Re-throw on final attempt
+                    }
+                    _logger.LogWarning($"⚠️ Redis timeout on attempt #{attempt} for driver #{request.DriverId}, retrying in {retryDelayMs}ms...");
+                    await Task.Delay(retryDelayMs, ct);
+                    retryDelayMs *= 2; // Exponential backoff
+                }
+                catch (RedisException rex)
+                {
+                    if (attempt == maxRetries)
+                    {
+                        _logger.LogError(rex, $"❌ Redis ERROR after {maxRetries} attempts for driver #{request.DriverId}: {rex.Message}");
+                        throw; // Re-throw on final attempt
+                    }
+                    _logger.LogWarning($"⚠️ Redis error on attempt #{attempt} for driver #{request.DriverId}, retrying in {retryDelayMs}ms...");
+                    await Task.Delay(retryDelayMs, ct);
+                    retryDelayMs *= 2; // Exponential backoff
+                }
+            }
+
+            // 📡 BROADCAST DRIVER LOCATION TO DRIVER GROUP
             await _driverHub.Clients.Group($"driver:{request.DriverId}")
                 .DriverLocationUpdated(request.DriverId, request.Latitude, request.Longitude);
 
-            // ?? CHECK FOR ACTIVE RIDE AND BROADCAST TO USER
+            // 👤 CHECK FOR ACTIVE RIDE AND BROADCAST TO USER
             await BroadcastLocationToActiveRideUserAsync(request.DriverId, request.Latitude, request.Longitude, ct);
 
             using var scope = _serviceProvider.CreateScope();

@@ -133,25 +133,36 @@ try
     // ---------------------------------------------------------
 
     // Static files
+    var defaultFilesOptions = new DefaultFilesOptions();
+    defaultFilesOptions.DefaultFileNames.Clear();
+    defaultFilesOptions.DefaultFileNames.Add("index.html");
+    defaultFilesOptions.DefaultFileNames.Add("user.html");
+    defaultFilesOptions.DefaultFileNames.Add("driver.html");
+    app.UseDefaultFiles(defaultFilesOptions);
     app.UseStaticFiles();
 
-    // Swagger (həmişə aktiv)
-    try
-    {
-        app.UseSwagger();
+    // Swagger UI toggle (configurable; defaults to enabled so /swagger works in prod unless disabled)
+    var exposeSwaggerUi = app.Configuration.GetValue("Swagger:ExposeUI", true);
 
-        app.UseSwaggerUI(c =>
-        {
-            // Serve Swagger UI at /swagger to avoid clashing with wwwroot/index.html
-            c.RoutePrefix = "swagger";
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "TurboTaxi API v1");
-        });
-        Console.WriteLine("[SWAGGER] Middleware configured successfully");
-    }
-    catch (Exception ex)
+    if (exposeSwaggerUi)
     {
-        Console.WriteLine($"[SWAGGER ERROR] {ex.Message}");
-        Console.WriteLine($"[SWAGGER ERROR] StackTrace: {ex.StackTrace}");
+        try
+        {
+            app.UseSwagger();
+
+            app.UseSwaggerUI(c =>
+            {
+                // Serve Swagger UI at /swagger to avoid clashing with wwwroot/index.html
+                c.RoutePrefix = "swagger";
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "TurboTaxi API v1");
+            });
+            Console.WriteLine("[SWAGGER] Middleware configured successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SWAGGER ERROR] {ex.Message}");
+            Console.WriteLine($"[SWAGGER ERROR] StackTrace: {ex.StackTrace}");
+        }
     }
 
     // CORS

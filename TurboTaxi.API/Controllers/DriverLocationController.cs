@@ -48,25 +48,28 @@ namespace TurboTaxi.API.Controllers
             catch (TimeoutException ex)
             {
                 _logger.LogError(ex, $"[Location Update] TIMEOUT - Driver #{request?.DriverId} - Redis connection timeout");
-                
-                return StatusCode(503, new
+
+                // Graceful degradation: return 200 but log the error
+                // This allows driver panel to continue working, but ride matching won't work
+                return Ok(new
                 {
-                    success = false,
-                    error = "Service temporarily unavailable",
-                    message = "Redis connection timeout",
-                    type = "TimeoutException"
+                    success = true,
+                    warning = "Location saved locally but Redis unavailable",
+                    message = "Driver panel operational, but ride matching temporarily limited",
+                    redisError = "Connection timeout"
                 });
             }
             catch (RedisException ex)
             {
                 _logger.LogError(ex, $"[Location Update] REDIS ERROR - Driver #{request?.DriverId} - {ex.Message}");
-                
-                return StatusCode(503, new
+
+                // Graceful degradation: return 200 but log the error
+                return Ok(new
                 {
-                    success = false,
-                    error = "Redis service error",
-                    message = ex.Message,
-                    type = "RedisException"
+                    success = true,
+                    warning = "Location saved locally but Redis unavailable",
+                    message = "Driver panel operational, but ride matching temporarily limited",
+                    redisError = ex.Message
                 });
             }
             catch (Exception ex)
