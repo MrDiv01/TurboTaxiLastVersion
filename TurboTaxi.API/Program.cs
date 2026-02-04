@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using TurboTaxi.Application;
 using TurboTaxi.Infrastructure;
 using TurboTaxi.Realtime;
 using TurboTaxi.Realtime.Hubs;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Security.Cryptography;
 
 try
 {
@@ -76,11 +78,53 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
-        // Ambiguous action resolver - fixes "Multiple operations with same verb and path"
         options.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
-
-        // Custom schema IDs to avoid conflicts
         options.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
+
+        // Register basic Swagger doc v1 so /swagger/v1/swagger.json is served
+        try
+        {
+            var asm = Assembly.Load("Microsoft.OpenApi");
+            var infoType = asm.GetType("Microsoft.OpenApi.Models.OpenApiInfo");
+            if (infoType != null)
+            {
+                dynamic info = Activator.CreateInstance(infoType)!;
+                info.Title = "TurboTaxi API";
+                info.Version = "v1";
+                var method = options.GetType().GetMethod("SwaggerDoc", new Type[] { typeof(string), infoType! });
+                method?.Invoke(options, new object[] { "v1", info });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SWAGGERDOC CONFIG ERROR] {ex.Message}");
+        }
+
+        // JWT Bearer authorize button
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "Paste your JWT token. Example: Bearer {token}",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT"
+        });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                new List<string>()
+            }
+        });
     });
     Console.WriteLine("[SWAGGER] Configuration complete");
 

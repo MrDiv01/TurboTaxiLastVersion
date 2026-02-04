@@ -155,7 +155,14 @@ namespace TurboTaxi.Infrastructure.Data
             modelBuilder.Entity<PromoCode>(entity =>
             {
                 entity.Property(x => x.DiscountValue).HasColumnType("decimal(18,2)");
-                entity.Property(x => x.MaxDiscountAmount).HasColumnType("decimal(18,2)");
+            });
+
+            modelBuilder.Entity<Ride>(entity =>
+            {
+                entity.Property(x => x.OriginalPrice).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.EstimatedFare).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.ActualFare).HasColumnType("decimal(18,2)");
+                entity.Property(x => x.DiscountAmount).HasColumnType("decimal(18,2)");
             });
         }
     }

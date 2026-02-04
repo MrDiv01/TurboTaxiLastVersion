@@ -31,6 +31,15 @@ namespace TurboTaxi.Domain.Entities
         // Estimated values (Directions API-dən)
         public double? EstimatedDistanceKm { get; set; }
         public int? EstimatedDurationMinutes { get; set; }
+
+        /// <summary>
+        /// Original price before any discount (endirimsiz qiymət)
+        /// </summary>
+        public decimal? OriginalPrice { get; set; }
+
+        /// <summary>
+        /// Final estimated fare after discount (endirimli qiymət)
+        /// </summary>
         public decimal? EstimatedFare { get; set; }
 
         // Actual values

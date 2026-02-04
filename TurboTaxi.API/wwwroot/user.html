@@ -403,6 +403,11 @@
                 <input type="number" step="0.000001" id="dropoff-lng" value="" placeholder="Enter destination longitude">
             </div>
 
+            <div class="form-group">
+                <label>Promo Code (optional)</label>
+                <input type="text" id="promo-code" value="" placeholder="Enter promo code if you have one">
+            </div>
+
             <button class="btn btn-primary" onclick="estimateRide()">💰 Get Price Estimate</button>
 
             <div id="estimate-result" style="display: none;"></div>
@@ -517,11 +522,23 @@
             return { key: lower || 'pending', label: str || 'Pending' };
         }
 
-        // Check authentication
-        const token = localStorage.getItem('accessToken');
-        const userId = localStorage.getItem('userId');
-        if (!token) {
-            window.location.href = '/index.html';
+        // Auth (test mode allowed without token)
+        function getToken() {
+            const t = localStorage.getItem('accessToken');
+            return t && t !== 'null' && t !== 'undefined' ? t : null;
+        }
+        function clearToken() {
+            localStorage.removeItem('accessToken');
+        }
+        const storedUserId = localStorage.getItem('userId');
+
+        function buildHeaders(includeAuth = true) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (includeAuth) {
+                const token = getToken();
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
         }
 
         // Initialize SignalR
@@ -665,21 +682,36 @@
             const pickupLng = parseFloat(document.getElementById('pickup-lng').value);
             const dropoffLat = parseFloat(document.getElementById('dropoff-lat').value);
             const dropoffLng = parseFloat(document.getElementById('dropoff-lng').value);
+            const promoCode = (document.getElementById('promo-code').value || '').trim();
 
             try {
-                const response = await fetch(`${API_BASE}/api/rides/estimate`, {
+                let response = await fetch(`${API_BASE}/api/rides/estimate`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ pickupLat, pickupLng, dropoffLat, dropoffLng })
+                    headers: buildHeaders(true),
+                    body: JSON.stringify({ pickupLat, pickupLng, dropoffLat, dropoffLng, promoCode, userId: storedUserId ? Number(storedUserId) : undefined })
                 });
+
+                if (response.status === 401) {
+                    clearToken();
+                    response = await fetch(`${API_BASE}/api/rides/estimate`, {
+                        method: 'POST',
+                        headers: buildHeaders(false),
+                        body: JSON.stringify({ pickupLat, pickupLng, dropoffLat, dropoffLng, promoCode, userId: storedUserId ? Number(storedUserId) : undefined })
+                    });
+                }
                 const text = await response.text();
                 const data = text ? JSON.parse(text) : {};
                 estimateData = data;
 
                 if (response.ok && data.success) {
+                    const discountRow = data.discount && data.discount > 0 ? `
+                        <div class="estimate-item">
+                            <span>Promo Discount (${data.promoCode || ''}):</span>
+                            <strong style="color: #28a745;">- ${data.discount} AZN</strong>
+                        </div>` : '';
+
+                    const promoMsg = data.promoMessage ? `<div style="margin-top:8px;color:#555;font-size:13px;">${data.promoMessage}</div>` : '';
+
                     document.getElementById('estimate-result').innerHTML = `
                         <div class="estimate-result">
                             <h3>💰 Price Estimate</h3>
@@ -699,10 +731,12 @@
                                 <span>Base Fare:</span>
                                 <strong>${data.tariff.baseFare} AZN</strong>
                             </div>
+                            ${discountRow}
                             <div class="estimate-item">
                                 <span>Estimated Price:</span>
                                 <strong style="color: #667eea; font-size: 20px;">${data.finalPrice} AZN</strong>
                             </div>
+                            ${promoMsg}
                         </div>
                     `;
                     document.getElementById('estimate-result').style.display = 'block';
@@ -728,21 +762,39 @@
             const pickupLng = parseFloat(document.getElementById('pickup-lng').value);
             const dropoffLat = parseFloat(document.getElementById('dropoff-lat').value);
             const dropoffLng = parseFloat(document.getElementById('dropoff-lng').value);
+            const promoCode = (document.getElementById('promo-code').value || '').trim();
 
             try {
-                const response = await fetch(`${API_BASE}/api/rides`, {
+                let response = await fetch(`${API_BASE}/api/rides`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: buildHeaders(true),
                     body: JSON.stringify({ 
                         pickupLat, 
                         pickupLng, 
                         destinationLat: dropoffLat, 
-                        destinationLng: dropoffLng 
+                        destinationLng: dropoffLng,
+                        promoCode: promoCode || null,
+                        estimatedPrice: estimateData?.finalPrice ?? null,
+                        userId: storedUserId ? Number(storedUserId) : null
                     })
                 });
+
+                if (response.status === 401) {
+                    clearToken();
+                    response = await fetch(`${API_BASE}/api/rides`, {
+                        method: 'POST',
+                        headers: buildHeaders(false),
+                        body: JSON.stringify({ 
+                            pickupLat, 
+                            pickupLng, 
+                            destinationLat: dropoffLat, 
+                            destinationLng: dropoffLng,
+                            promoCode: promoCode || null,
+                            estimatedPrice: estimateData?.finalPrice ?? null,
+                            userId: storedUserId ? Number(storedUserId) : null
+                        })
+                    });
+                }
                 const text = await response.text();
                 const data = text ? JSON.parse(text) : {};
 

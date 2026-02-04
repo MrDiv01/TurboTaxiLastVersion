@@ -8,6 +8,17 @@ namespace TurboTaxi.Models.Rides
         public double? DestinationLng { get; set; }
         public string VehicleType { get; set; } = "Standard";
         public int UserId { get; set; }
+
+        public string? PromoCode { get; set; }
+        /// <summary>
+        /// Quoted fare before discount (from estimate)
+        /// </summary>
+        public decimal? EstimatedPrice { get; set; }
+
+        /// <summary>
+        /// Tariff ID used for pricing (from estimate)
+        /// </summary>
+        public int? TariffId { get; set; }
     }
 
     public class CreateRideResponse

@@ -13,7 +13,7 @@ namespace TurboTaxi.Domain.Entities
 
         public PromoDiscountType DiscountType { get; set; } = PromoDiscountType.FixedAmount;
         public decimal DiscountValue { get; set; }          // 10 AZN və ya 10%
-        public decimal? MaxDiscountAmount { get; set; }     // faiz olanda limit
+        // Removed MaxDiscountAmount: percentage type applies exact rate by DiscountValue
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }

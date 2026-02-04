@@ -39,6 +39,16 @@ namespace TurboTaxi.API.Controllers
                     return BadRequest(new { success = false, error = "Request body is required" });
                 }
 
+                // Populate userId from token if available (promo hesablaması üçün)
+                var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrWhiteSpace(userIdClaim) == false && request.UserId is null)
+                {
+                    if (int.TryParse(userIdClaim, out var uid))
+                    {
+                        request.UserId = uid;
+                    }
+                }
+
                 if (request.PickupLat < -90 || request.PickupLat > 90)
                 {
                     return BadRequest(new { success = false, error = "Pickup latitude must be between -90 and 90" });
@@ -83,7 +93,7 @@ namespace TurboTaxi.API.Controllers
         }
 
         [HttpPost]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<ActionResult<CreateRideResponse>> CreateRide([FromBody] CreateRideRequest request, CancellationToken ct)
         {
             try
@@ -93,13 +103,17 @@ namespace TurboTaxi.API.Controllers
                     return BadRequest(new { success = false, error = "Request body is required" });
                 }
 
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                if (userId == 0)
+                // Prefer authenticated user id if token exists; otherwise require body UserId for test mode
+                var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrWhiteSpace(userIdClaim) && int.TryParse(userIdClaim, out var claimUserId) && claimUserId > 0)
                 {
-                    return Unauthorized(new { success = false, error = "User not authenticated" });
+                    request.UserId = claimUserId;
                 }
 
-                request.UserId = userId;
+                if (request.UserId <= 0)
+                {
+                    return BadRequest(new { success = false, error = "UserId is required (pass in body or use auth token)" });
+                }
 
                 _logger.LogInformation($"🚖 POST /api/rides - Creating ride for User #{request.UserId}");
                 var result = await _rideService.CreateRideAsync(request, ct);

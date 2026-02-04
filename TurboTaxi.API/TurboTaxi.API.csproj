@@ -13,14 +13,23 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <!-- Remove Microsoft.AspNetCore.OpenApi to avoid forcing Microsoft.OpenApi >=2.0 -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
-    <PackageReference Include="Microsoft.OpenApi" Version="2.3.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.0.1" />
+    <PackageReference Include="Microsoft.OpenApi" Version="1.6.14" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.OpenApi" Condition="Exists('$(NuGetPackageRoot)Microsoft.OpenApi/2.6.0/lib/net8.0/Microsoft.OpenApi.dll')">
+      <HintPath>$(NuGetPackageRoot)Microsoft.OpenApi/2.6.0/lib/net8.0/Microsoft.OpenApi.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.OpenApi" Condition="!Exists('$(NuGetPackageRoot)Microsoft.OpenApi/2.6.0/lib/net8.0/Microsoft.OpenApi.dll') and Exists('$(NuGetPackageRoot)Microsoft.OpenApi/2.6.0/lib/netstandard2.0/Microsoft.OpenApi.dll')">
+      <HintPath>$(NuGetPackageRoot)Microsoft.OpenApi/2.6.0/lib/netstandard2.0/Microsoft.OpenApi.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

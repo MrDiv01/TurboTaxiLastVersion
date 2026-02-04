@@ -7,6 +7,9 @@ namespace TurboTaxi.Models.Rides
         public double DropoffLat { get; set; }
         public double DropoffLng { get; set; }
         public string? VehicleType { get; set; } = "Standard";
+
+        public string? PromoCode { get; set; }
+        public int? UserId { get; set; }
     }
 
     public class RideEstimateResponse
@@ -19,6 +22,11 @@ namespace TurboTaxi.Models.Rides
         public TariffInfo Tariff { get; set; } = null!;
         public decimal RawPrice { get; set; }
         public decimal FinalPrice { get; set; }
+
+        public decimal Discount { get; set; }
+        public string? PromoCode { get; set; }
+        public bool PromoApplied { get; set; }
+        public string? PromoMessage { get; set; }
     }
 
     public class TariffInfo

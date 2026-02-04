@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TurboTaxi.Application.Interfaces;
 using TurboTaxi.Domain.Entities;
+using TurboTaxi.Models.Promos;
 using TurboTaxi.Models.Rides;
 
 namespace TurboTaxi.Infrastructure.Services
@@ -11,6 +12,7 @@ namespace TurboTaxi.Infrastructure.Services
         private readonly ICityResolver _cityResolver;
         private readonly ITariffService _tariffService;
         private readonly IPricingService _pricingService;
+        private readonly IPromoService _promoService;
         private readonly ILogger<RideEstimateService> _logger;
 
         public RideEstimateService(
@@ -18,12 +20,14 @@ namespace TurboTaxi.Infrastructure.Services
             ICityResolver cityResolver,
             ITariffService tariffService,
             IPricingService pricingService,
+            IPromoService promoService,
             ILogger<RideEstimateService> logger)
         {
             _geocoding = geocoding;
             _cityResolver = cityResolver;
             _tariffService = tariffService;
             _pricingService = pricingService;
+            _promoService = promoService;
             _logger = logger;
         }
 
@@ -60,6 +64,26 @@ namespace TurboTaxi.Infrastructure.Services
             // Step 5: Calculate price
             var (rawPrice, finalPrice) = _pricingService.CalculatePrice(tariff, distanceKm, durationMin);
 
+            decimal discount = 0;
+            bool promoApplied = false;
+            string? promoMessage = null;
+
+            if (!string.IsNullOrWhiteSpace(request.PromoCode) && request.UserId.HasValue && request.UserId.Value > 0)
+            {
+                var promoResult = await _promoService.ApplyAsync(new ApplyPromoRequest
+                {
+                    Code = request.PromoCode,
+                    UserId = request.UserId.Value,
+                    Subtotal = finalPrice,
+                    Consume = false
+                }, ct);
+
+                promoApplied = promoResult.Success;
+                promoMessage = promoResult.Message;
+                discount = promoResult.Success ? promoResult.Discount : 0;
+                finalPrice = promoResult.Success ? promoResult.FinalTotal : finalPrice;
+            }
+
             // Step 6: Build response
             return new RideEstimateResponse
             {
@@ -75,7 +99,11 @@ namespace TurboTaxi.Infrastructure.Services
                     MinimumFare = tariff.MinimumFare
                 },
                 RawPrice = rawPrice,
-                FinalPrice = finalPrice
+                FinalPrice = finalPrice,
+                Discount = discount,
+                PromoApplied = promoApplied,
+                PromoCode = request.PromoCode,
+                PromoMessage = promoMessage
             };
         }
 

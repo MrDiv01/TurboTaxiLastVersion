@@ -5,6 +5,7 @@ using TurboTaxi.Application.Interfaces;
 using TurboTaxi.Domain.Entities;
 using TurboTaxi.Domain.Enums;
 using TurboTaxi.Infrastructure.Data;
+using TurboTaxi.Models.Promos;
 using TurboTaxi.Models.Rides;
 using TurboTaxi.Models.Routes;
 using TurboTaxi.Realtime.Redis;
@@ -18,6 +19,7 @@ namespace TurboTaxi.Infrastructure.Services
         private readonly IRideNotificationService _notification;
         private readonly IRouteEstimationService _routeEstimation;
         private readonly RideQueryService _queryService;
+        private readonly IPromoService _promoService;
         private readonly ILogger<RideService> _logger;
 
         public RideService(
@@ -26,6 +28,7 @@ namespace TurboTaxi.Infrastructure.Services
             IRideNotificationService notification,
             IRouteEstimationService routeEstimation,
             RideQueryService queryService,
+            IPromoService promoService,
             ILogger<RideService> logger)
         {
             _db = db;
@@ -33,6 +36,7 @@ namespace TurboTaxi.Infrastructure.Services
             _notification = notification;
             _routeEstimation = routeEstimation;
             _queryService = queryService;
+            _promoService = promoService;
             _logger = logger;
         }
 
@@ -147,18 +151,83 @@ namespace TurboTaxi.Infrastructure.Services
                     EndLocationId = endLoc.Id,
                     RequestedVehicleType = Enum.TryParse<VehicleType>(request.VehicleType, true, out var vt) ? vt : VehicleType.Standard,
                     Status = RideStatus.Pending,
-                    RequestedTime = DateTime.UtcNow
+                    RequestedTime = DateTime.UtcNow,
+                    TariffId = request.TariffId  // Set tariff from request
                 };
                 _db.Rides.Add(ride);
-                await _db.SaveChangesAsync(ct);
 
-                _logger.LogInformation($"? Ride #{ride.Id} created");
+                // Don't save yet - apply promo first so all fields are set in one transaction
 
                 // Estimate route
                 var (polyline, distanceKm, durationMin) = await EstimateRouteAsync(
                     request.PickupLat, request.PickupLng,
                     request.DestinationLat ?? 0, request.DestinationLng ?? 0,
                     ct);
+
+                ride.EstimatedDistanceKm = distanceKm;
+                ride.EstimatedDurationMinutes = durationMin;
+
+                // Apply promo if provided using client-estimated price as subtotal
+                decimal originalPrice = request.EstimatedPrice ?? 0;
+                ride.OriginalPrice = originalPrice;  // Save original price before discount
+
+                if (request.EstimatedPrice.HasValue && request.EstimatedPrice.Value > 0 && !string.IsNullOrWhiteSpace(request.PromoCode))
+                {
+                    _logger.LogInformation($"📋 Validating promo '{request.PromoCode}' (not consuming yet)");
+
+                    // First, validate promo without consuming
+                    var promoResult = await _promoService.ApplyAsync(new ApplyPromoRequest
+                    {
+                        Code = request.PromoCode!,
+                        UserId = request.UserId,
+                        Subtotal = request.EstimatedPrice.Value,
+                        Consume = false  // ⚠️ Don't consume yet - validate first
+                    }, ct);
+
+                    if (promoResult.Success)
+                    {
+                        ride.PromoCodeId = promoResult.PromoCodeId;
+                        ride.DiscountAmount = promoResult.Discount;
+                        ride.EstimatedFare = promoResult.FinalTotal;  // Discounted price
+                        _logger.LogInformation($"✅ Promo VALID: OriginalPrice={originalPrice}, Discount={promoResult.Discount}, EstimatedFare={promoResult.FinalTotal}, PromoCodeId={promoResult.PromoCodeId}");
+                    }
+                    else
+                    {
+                        _logger.LogWarning("❌ Promo FAILED: {Message}", promoResult.Message);
+                        ride.EstimatedFare = request.EstimatedPrice;
+                    }
+                }
+                else
+                {
+                    ride.EstimatedFare = request.EstimatedPrice;
+                    _logger.LogInformation($"📋 No promo: OriginalPrice={originalPrice}, EstimatedFare={ride.EstimatedFare}");
+                }
+
+                // Save ride with all promo data in one transaction
+                await _db.SaveChangesAsync(ct);
+                _logger.LogInformation($"✅ Ride #{ride.Id} saved to DB with PromoCodeId={ride.PromoCodeId}, DiscountAmount={ride.DiscountAmount}, OriginalPrice={ride.OriginalPrice}, EstimatedFare={ride.EstimatedFare}");
+
+                // NOW consume promo after ride is successfully saved
+                if (ride.PromoCodeId.HasValue && !string.IsNullOrWhiteSpace(request.PromoCode))
+                {
+                    _logger.LogInformation($"🔥 Consuming promo '{request.PromoCode}' for ride #{ride.Id}");
+                    var consumeResult = await _promoService.ApplyAsync(new ApplyPromoRequest
+                    {
+                        Code = request.PromoCode!,
+                        UserId = request.UserId,
+                        Subtotal = originalPrice,
+                        Consume = true  // ✅ Now consume after ride is saved
+                    }, ct);
+
+                    if (!consumeResult.Success)
+                    {
+                        _logger.LogWarning($"⚠️ Failed to consume promo after ride save: {consumeResult.Message}");
+                    }
+                    else
+                    {
+                        _logger.LogInformation($"✅ Promo consumed successfully for ride #{ride.Id}");
+                    }
+                }
 
                 // Find nearby drivers
                 _logger.LogInformation($"?? Searching for nearby drivers...");
@@ -342,19 +411,19 @@ namespace TurboTaxi.Infrastructure.Services
 
                 // Estimate route from driver to pickup
                 string? polyline = null;
-                double? distanceKm = null;
-                int? durationMin = null;
+                double? driverToPickupDistanceKm = null;
+                int? driverToPickupDurationMin = null;
 
                 if (hasLocation)
                 {
-                    (polyline, distanceKm, durationMin) = await EstimateRouteAsync(
+                    (polyline, driverToPickupDistanceKm, driverToPickupDurationMin) = await EstimateRouteAsync(
                         driverLat, driverLng,
                         ride.StartLocation.Latitude, ride.StartLocation.Longitude,
                         ct);
                 }
                 else
                 {
-                    _logger.LogWarning($"?? Driver #{request.DriverId} has invalid location, skipping route estimation");
+                    _logger.LogWarning($"⚠️ Driver #{request.DriverId} has invalid location, skipping route estimation");
                 }
 
                 // Update ride
@@ -362,8 +431,12 @@ namespace TurboTaxi.Infrastructure.Services
                 ride.Status = RideStatus.Approved;
                 ride.AcceptedTime = DateTime.UtcNow;
                 ride.RoutePolyline = polyline;
-                ride.EstimatedDistanceKm = distanceKm;
-                ride.EstimatedDurationMinutes = durationMin;
+                // DO NOT overwrite EstimatedDistanceKm/DurationMinutes - they are from pickup to destination
+                // driverToPickupDistanceKm is only for ETA notification
+
+                // Set ActualFare from EstimatedFare (includes promo discount if applied)
+                ride.ActualFare = ride.EstimatedFare;
+                _logger.LogInformation($"💰 AcceptRide: EstimatedFare={ride.EstimatedFare}, ActualFare={ride.ActualFare}, DiscountAmount={ride.DiscountAmount}, PromoCodeId={ride.PromoCodeId}");
 
                 _logger.LogInformation($"   Saving ride changes to database...");
                 await _db.SaveChangesAsync(ct);
@@ -402,10 +475,10 @@ namespace TurboTaxi.Infrastructure.Services
                         DestinationLat = ride.EndLocation.Latitude,
                         DestinationLng = ride.EndLocation.Longitude,
                         EncodedPolyline = polyline,
-                        DistanceKm = distanceKm,
-                        DurationMinutes = durationMin,
+                        DistanceKm = driverToPickupDistanceKm,  // Driver to pickup distance
+                        DurationMinutes = driverToPickupDurationMin,  // Driver to pickup ETA
                         Message = hasLocation
-                            ? $"Driver is coming! ETA: {durationMin ?? 0} min"
+                            ? $"Driver is coming! ETA: {driverToPickupDurationMin ?? 0} min"
                             : "Driver accepted! Waiting for location..."
                     });
                 }
@@ -426,8 +499,11 @@ namespace TurboTaxi.Infrastructure.Services
                         DestinationLat = ride.EndLocation.Latitude,
                         DestinationLng = ride.EndLocation.Longitude,
                         EncodedPolyline = polyline,
-                        DistanceKm = distanceKm,
-                        DurationMinutes = durationMin,
+                        DistanceKm = ride.EstimatedDistanceKm,  // Pickup to destination (original estimate)
+                        DurationMinutes = ride.EstimatedDurationMinutes,
+                        EstimatedFare = ride.EstimatedFare,  // Fare with discount
+                        OriginalPrice = ride.OriginalPrice,  // Original price
+                        DiscountAmount = ride.DiscountAmount,
                         Message = "Navigate to pickup location"
                     });
                 }

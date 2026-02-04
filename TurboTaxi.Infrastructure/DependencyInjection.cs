@@ -37,6 +37,7 @@ namespace TurboTaxi.Infrastructure
             services.AddScoped<ITariffService, TariffService>();
             services.AddScoped<IPricingService, PricingService>();
             services.AddScoped<IRideEstimateService, RideEstimateService>();
+            services.AddScoped<IPromoService, PromoService>();
 
             return services;
         }
